@@ -143,6 +143,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | 2025-10-04 | Initial roadmap file created | All | system | Baseline established |
 | 2025-10-04 | Frontend tracker now fetches dashboard + leader actions via API | ING-003 | codex | Enables real posts flowing from backend ingest |
 | 2025-10-04 | Archived legacy Vite prototype; Next.js app is canonical | CI-003 | codex | Legacy Vite assets moved to archive/vite-app |
+| 2025-10-07 | Removed Vite archive to avoid stack confusion | CI-003 | codex | Repository now only contains Next.js implementation |
 | 2025-10-04 | Added shared Hindi date formatter for frontend tests | L10N-001 | codex | Util + Vitest spec under src/utils |
 | 2025-10-04 | Localized PostCard with Hindi badges & dates | ING-005 | codex | UI now highlights language metadata |
 | 2025-10-04 | Began Facebook Graph ingestion implementation | ING-006 | codex | Feature-flagged plan drafted; TDD underway |

@@ -8,7 +8,7 @@
 
 ## Operating Rules
 1. **Plan → TDD → Implement → Verify → Document** in that order. Never skip red → green → refactor.
-2. Touch one concern per task. Archive (not delete) any legacy files per policy.
+2. Touch one concern per task. Archive or remove legacy assets per current guidance (Vite stack fully removed; Next.js is canonical).
 3. Keep coverage ≥ 85% lines / 70% branches; run `npm run test` and `python3 -m pytest` (scoped) locally before PR.
 4. Update `ToDoList.md`, `GEMINI.md`, `PRD.md` for every scope change; keep acceptance checklist live.
 5. Feature flag risky paths (`FACEBOOK_GRAPH_ENABLED`) and provide rollback notes in PR template.

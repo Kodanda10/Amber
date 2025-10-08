@@ -28,3 +28,4 @@ This log tracks all development activities performed by the Gemini agent, follow
 *   **Graph metadata surfaced to UI:** `PostCard` now renders backend-provided `avatarUrl`, Hindi date badges, and optional `mediaUrl` attachments with targeted Vitest coverage (`src/components/PostCard.test.tsx`).
 *   **Admin token issuance endpoint:** Added `/api/admin/token` gated by `ADMIN_BOOTSTRAP_SECRET` alongside pytest coverage (`tests/test_auth.py`) ensuring tokens flow through `/api/admin/ping`.
 *   **Structured error logging:** Centralized exception handler emits JSON error envelopes and logs with request correlation; verified via `tests/test_observability_and_ingest.py::test_error_log_shape_on_exception`.
+*   **Removed legacy Vite stack:** Deleted `archive/vite-app/` so the repository solely reflects the Next.js implementation.
