@@ -1,5 +1,0 @@
-{
-  "name": "Copy of Political Social Media Tracker",
-  "description": "An application to track and analyze the social media activities of political leaders. It fetches simulated social media data, processes it, and presents it in an insightful dashboard format with analytics and reports.",
-  "requestFramePermissions": []
-}
