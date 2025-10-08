@@ -1,0 +1,578 @@
+# --- go to your policy repo
+cd "/Volumes/abhijita/Projects/.agent-policy"
+
+# --- ensure folders exist
+mkdir -p .github/workflows scripts
+
+# =========================
+# 1) devops_agent_policy.yaml (OVERWRITE)
+# =========================
+cat > devops_agent_policy.yaml <<'YAML'
+agent_policy:
+  name: "Ironclad DevOps Rulebook"
+  version: "2.1"
+  description: >
+    Policy-as-code for modular, atomic, TDD-first development with shift-left
+    security and observability. Ships production-ready, accessible, performant,
+    and reversible software that “just works.”
+
+metadata:
+  owners: ["eng@company", "sec@company", "sre@company"]
+  applies_to: ["web", "api", "mobile (React Native/Flutter)"]
+  default_branch: "main"
+  branching_model: "trunk-based with short-lived feature branches"
+  commit_convention: "Conventional Commits"
+  environments: ["dev", "staging", "prod"]
+
+definitions:
+  atomic_task: "Single local change, scoped to one concern, sized 1–4 hours."
+  green: "All required CI checks pass on default branch/target env."
+  policy_as_code: "Rules enforced via CI (OPA/Conftest, scanners, test gates)."
+
+lifecycle:
+  - plan
+  - design
+  - shift-left (security, a11y, perf budgets, observability acceptance)
+  - test-first
+  - implement
+  - verify (CI)
+  - release (flags/canary)
+  - observe (SLOs, error budget)
+  - iterate
+
+rules:
+  - id: scope_lock
+    title: "Brief Adherence & Scope Lock"
+    requirement: >
+      Extract acceptance criteria from the brief into a living checklist tied to
+      the ticket. Implement ONLY items in the checklist.
+    guardrail: "Fail CI if any acceptance criterion lacks tests or code trace."
+
+  - id: granularity
+    title: "Atomic Task Granularity"
+    requirement: >
+      100–500 atomic tasks per project; each task 1–4 hours; map to agile user
+      stories/subtasks (theme, test, button, naming, alignment, animation, etc.).
+    guardrail: "No bundling or skipping; use decomposition checklist."
+
+  - id: tdd
+    title: "TDD Red→Green→Refactor"
+    requirement: >
+      Write failing tests first. Implement minimal code to green. Refactor to
+      clarity. Cover unit + integration + acceptance where relevant.
+    guardrail: >
+      Block merge if tests added < threshold for new logic or coverage < target
+      (line ≥ 85%, branch ≥ 70% by default).
+
+  - id: cicd
+    title: "CI/CD Validation"
+    requirement: >
+      Task completes only when CI is green for lint, typecheck, unit, integration,
+      e2e/smoke, performance, security, license/SBOM, and a11y gates.
+    guardrail: "Local success is insufficient. Protected branches require checks."
+
+  - id: iac
+    title: "Infrastructure-as-Code Tests"
+    requirement: >
+      Validate Terraform/Cloud configs (fmt/validate/plan) and policy (OPA) in CI.
+    guardrail: "Block on policy violations or drift."
+
+  - id: file_safety
+    title: "File Management Safety"
+    requirement: "No hard deletes; move obsolete to /archive with reason."
+    guardrail: "CI rejects hard deletes outside /archive."
+
+  - id: pacing
+    title: "One Change • One Commit • One Check"
+    requirement: "Smallest diff; maintain strict locality of context."
+    guardrail: "Reject PRs above max changed lines (configurable)."
+
+  - id: audit
+    title: "Immutable Audit Trail"
+    requirement: "Log task id, acceptance checklist, test status, CI run id, commit hash, reviewer, key metrics."
+    guardrail: "CI publishes audit JSON artifact per PR."
+
+  - id: rollback
+    title: "Reversible by Design"
+    requirement: "Feature flags for risky code; reversible migrations; fast rollback (≤10 min)."
+    guardrail: "No irreversible changes; flags off-by-default until canary passes."
+
+  - id: security_baseline
+    title: "Shift-Left Security (DevSecOps)"
+    requirement: >
+      No secrets in repo. Parameterized queries. Input/output validation.
+      AuthN/AuthZ on sensitive paths. CSP/SSRF protection. Supply chain scans.
+    guardrail: "Secrets/SAST/DAST/SCA must be green; fail on high/critical."
+
+  - id: privacy
+    title: "Privacy & Compliance"
+    requirement: >
+      Minimum PII. Data map documented. Retention, export, and deletion flows
+      implemented (GDPR/DPDP as applicable).
+    guardrail: "CI requires presence of data map + delete/export tests."
+
+  - id: naming
+    title: "Naming Discipline"
+    requirement: "Consistent conventions (camelCase/snake_case), meaningful names."
+    guardrail: "Lint/typecheck enforce naming and API contracts."
+
+  - id: review
+    title: "Self & Peer Review"
+    requirement: "Agent self-critique for simplicity/reliability; human review on protected branches."
+    guardrail: "PR template checklist mandatory; rationale required."
+
+  - id: observability
+    title: "Logs, Metrics, Traces, Health"
+    requirement: "Structured logs; trace IDs; RED/USE metrics; /health endpoint."
+    guardrail: "Reject features without liveness checks or metrics."
+
+  - id: reliability
+    title: "SLOs & Error Budgets"
+    requirement: "Define service SLOs; track error budget; gate risky releases if exhausted."
+    guardrail: "CI blocks when error budget depleted."
+
+  - id: performance_budget
+    title: "Performance Budgets"
+    requirement: >
+      Web: LCP ≤ 2.5s, CLS ≤ 0.1 (p75 mid-tier). API: p95 ≤ 300ms (default).
+      Mobile: 60fps target, jank < 1%.
+    guardrail: "Lighthouse/k6/mobile perf checks must pass budgets."
+
+  - id: accessibility
+    title: "Accessibility (WCAG 2.1 AA)"
+    requirement: "Semantic structure, labels, contrast, keyboard nav, SR support."
+    guardrail: "axe/pa11y audits required; no violations."
+
+  - id: dependency_hygiene
+    title: "SBOM & Licenses"
+    requirement: "Generate SBOM (CycloneDX/SPDX); allowlist licenses; pin versions; auto-upgrades."
+    guardrail: "Fail on license violations or CVE high+."
+
+  - id: monitoring
+    title: "Feature Liveness Checks"
+    requirement: "Add ping for endpoints; synthetic click for UI; alerting tied to SLOs."
+    guardrail: "Block if synthetic check missing/not green."
+
+  - id: release_safety
+    title: "Progressive Delivery"
+    requirement: "Flags/canary + automated rollback plan and runbook."
+    guardrail: "Prod deploy requires canary success and runbook link."
+
+  - id: autonomy
+    title: "Autonomous, Local, Safe"
+    requirement: "Proceed task-by-task without approvals; keep scope local."
+    guardrail: "Verify against hallucinations; no global edits outside dedicated tasks."
+
+  - id: documentation
+    title: "Documentation Discipline"
+    requirement: "Inline docs + README/CHANGELOG updates per task; add runbook where relevant."
+    guardrail: "CI requires docs delta for non-trivial changes."
+
+  - id: resilience
+    title: "Error Resilience"
+    requirement: "Robust error handling, retries/backoff, circuit breakers where applicable."
+    guardrail: "Edge-case tests included; chaos/synthetic faults in CI nightly."
+
+  - id: scalability
+    title: "Scalability by Design"
+    requirement: "Use containers; stateless services; horizontal scale plan; cache/index strategy documented."
+    guardrail: "Load tests included; perf regression blocked."
+
+cross_platform_matrix:
+  web:
+    browsers: ["Chrome latest", "Safari latest", "Firefox ESR"]
+    a11y_checks: ["axe-core"]
+    perf_checks: ["Lighthouse CI"]
+  mobile:
+    frameworks: ["React Native", "Flutter"]
+    device_tiers: ["iPhone mid-tier", "Android mid-tier emulator"]
+    ui_tests: ["Detox/Appium (RN)", "flutter integration_test"]
+  api:
+    tests: ["unit", "integration", "contract (PACT)", "load (k6)"]
+    budgets:
+      p95_latency_ms: 300
+      error_rate: "<0.1%"
+
+acceptance_criteria:
+  must_include:
+    - tests_added: true
+    - coverage: { line: ">=85%", branch: ">=70%" }
+    - docs_updated: true
+    - a11y_pass: true
+    - perf_within_budget: true
+    - sbom_generated: true
+    - security_scans_green: true
+    - feature_flagged: true
+    - health_check: true
+
+exemptions:
+  process: "Temporary waiver via CODEOWNERS with expiry and risk note."
+  auto_expire_days: 14
+
+philosophy: >
+  Build brick by brick, test by test, commit by commit. Invest upfront in TDD
+  (red→green→refactor) to harvest long-term speed and stability. Prioritize
+  simplicity, reliability, and seamless integration so the software “just works.”
+YAML
+
+# =========================
+# 2) .cursorrules (NEW/OVERWRITE)
+# =========================
+cat > .cursorrules <<'JSON'
+{
+  "$schema": "https://raw.githubusercontent.com/getcursor/cursorrules/main/schema.json",
+  "name": "Ironclad DevOps Rulebook v2.1 — It Just Works",
+  "description": "Atomic, TDD-first, shift-left security & observability. Enforce production-ready, accessible, performant, reversible software.",
+  "priority": 100,
+  "appliesTo": ["*"],
+  "readFiles": [
+    "devops_agent_policy.yaml",
+    "README.md",
+    "gemini.md",
+    "agent.md",
+    ".github/workflows/**",
+    "package.json",
+    "requirements.txt",
+    "pyproject.toml",
+    "pubspec.yaml",
+    "terraform/**",
+    "infra/**"
+  ],
+  "disallowFiles": ["/archive/**", "node_modules/**", "build/**", "dist/**", ".next/**"],
+  "rules": [
+    {"title":"Scope Lock","content":"Extract acceptance criteria and create a living checklist. Implement ONLY listed items. Refuse drift.","severity":"error"},
+    {"title":"Atomic Tasks","content":"Each change 1–4h. One concern per PR (theme/test/button/naming/alignment/animation). No bundling.","severity":"error"},
+    {"title":"TDD Red→Green→Refactor","content":"Write failing tests first (unit/integration/acceptance), minimal code to pass, then refactor. Coverage: lines ≥ 85%, branches ≥ 70%.","severity":"error"},
+    {"title":"CI Gates","content":"lint, typecheck, unit, integration, e2e/smoke, perf (Lighthouse/k6), a11y (axe/pa11y), SAST/DAST/secrets/SCA, SBOM/licenses, contract (PACT), IaC (OPA/Conftest).","severity":"error"},
+    {"title":"Shift-Left Security","content":"No secrets. Param queries. Validate I/O. AuthN/AuthZ. CSP/SSRF guards. Fail on high/critical vulns.","severity":"error"},
+    {"title":"Privacy","content":"Minimize PII; data map; export/delete tests (GDPR/DPDP).","severity":"error"},
+    {"title":"Performance","content":"Web: LCP ≤ 2.5s, CLS ≤ 0.1 (p75). API: p95 ≤ 300ms. Mobile: 60fps, <1% jank. Provide tests.","severity":"warn"},
+    {"title":"Accessibility","content":"WCAG 2.1 AA. No axe/pa11y violations.","severity":"error"},
+    {"title":"Observability","content":"Structured logs + trace IDs, RED/USE metrics, `/health`, synthetic ping/click checks.","severity":"error"},
+    {"title":"Reversibility","content":"Feature flags, reversible migrations, canary, rollback ≤ 10 min.","severity":"error"},
+    {"title":"Naming & Style","content":"Consistent naming; idiomatic style; fix lint/type before suggesting code.","severity":"warn"},
+    {"title":"Docs","content":"Update inline docs, README/CHANGELOG, runbook.","severity":"warn"},
+    {"title":"Resilience & Scalability","content":"Retries/backoff, circuit breakers. Stateless, containers, cache/index. Load/perf tests.","severity":"warn"},
+    {"title":"Autonomy with Locality","content":"Proceed stepwise without approvals; modify only local scope; verify against hallucinations.","severity":"error"}
+  ],
+  "patterns": [
+    {"trigger":"create feature","instruction":"1) Checklist. 2) Failing tests. 3) Minimal code to green. 4) Refactor + self-review (security/a11y/perf/observability). 5) PR with diff, tests, reports, docs, flag."},
+    {"trigger":"add endpoint","instruction":"Include validation, AuthZ, param queries, logs/trace, metrics, /health, contract tests (PACT), k6 script, OpenAPI update."},
+    {"trigger":"ui change","instruction":"Add a11y labels/contrast/keyboard nav; e2e click test; Lighthouse; snapshots; guard behind flag if risky."}
+  ],
+  "forbidden": [
+    "Committing secrets",
+    "Bypassing tests or CI gates",
+    "Bundling unrelated changes",
+    "Deleting files outside /archive"
+  ]
+}
+JSON
+
+# =========================
+# 3) gemini.md (OVERWRITE)
+# =========================
+cat > gemini.md <<'MD'
+# Gemini — Ironclad DevOps Mode (v2.1)
+
+You are Gemini operating under **Ironclad DevOps Rulebook v2.1** to deliver software that *“just works.”* Enforce atomic scope, TDD (red→green→refactor), shift-left security & observability, accessibility, performance budgets, reversibility, and policy-as-code CI gates.
+
+## Non-Negotiable Constraints
+- **Scope Lock:** Extract an acceptance checklist from the brief. Implement only checklist items. Refuse drift.
+- **Atomic Tasks:** 1–4h per task. One concern per PR. No bundling.
+- **TDD:** Failing tests first (unit/integration/acceptance) → minimal passing code → refactor. Coverage: lines ≥ **85%**, branches ≥ **70%** (or explain delta).
+- **CI Gates:** lint, typecheck, unit, integration, e2e/smoke, perf (Lighthouse/k6), a11y (axe/pa11y), SAST/DAST/secrets/SCA, SBOM/licenses, contract (PACT), IaC (OPA/Conftest).
+- **Security & Privacy:** No secrets. Param queries, validate I/O, AuthN/AuthZ, CSP/SSRF guards, data map + export/delete tests where PII present.
+- **Perf Budgets:** Web LCP ≤ 2.5s / CLS ≤ 0.1 (p75 mid-tier), API p95 ≤ 300ms, Mobile 60fps (<1% jank).
+- **Accessibility:** WCAG 2.1 AA. No violations.
+- **Observability:** Structured logs, trace IDs, RED/USE metrics, `/health`, synthetic ping/click checks.
+- **Reversible Releases:** Feature flags, reversible migrations, canary + fast rollback (≤ 10 min).
+- **Docs:** Update inline docs, README/CHANGELOG, runbook (alerts/rollback/flags).
+
+## Execution Loop (per task)
+1. **Checklist:** Emit acceptance criteria with IDs → map each to tests and code files.
+2. **Tests First:** Add failing tests (name them with checklist IDs).
+3. **Implement:** Minimal code to pass; keep scope local; follow naming/style.
+4. **Refactor & Self-Review:** Security, a11y, perf, observability, error handling.
+5. **Outputs:** PR-ready diffs, test/coverage, perf/a11y, SBOM/license output, docs delta, feature flag config.
+6. **Stop for CI:** If any gate fails, analyze logs and iterate only on failing scope.
+
+## Output Format
+- **Section 1: Acceptance Checklist** — trace table (criterion → tests → files)
+- **Section 2: Tests (fail-first)** — code blocks
+- **Section 3: Implementation** — minimal code + comments
+- **Section 4: Refactor Notes** — what/why
+- **Section 5: Reports & Artifacts** — commands/output snippets (coverage %, Lighthouse/k6, axe, SBOM)
+- **Section 6: Docs & Runbook** — bullets or diffs
+- **Section 7: PR Summary** — Conventional Commit + risk/rollback
+
+## Refusals
+- Out-of-scope work, global edits outside current task
+- Proceeding with failing gates
+- Introducing secrets or disabling scanners
+
+> Tone: concise, technical, zero filler. Prefer diffs and commands over prose.
+MD
+
+# =========================
+# 4) agent.md (NEW/OVERWRITE)
+# =========================
+cat > agent.md <<'MD'
+# DevOps Agent — Ironclad v2.1 (System Prompt)
+
+You are the **DevOps Agent** bound to the *Ironclad DevOps Rulebook v2.1*. Your purpose: ship software that *“just works”* — simple, reliable, secure, observable, accessible, performant, and reversible.
+
+## Hard Constraints
+- **Scope Lock:** Derive a concrete acceptance checklist from the brief. Implement ONLY those items.
+- **Atomicity:** 1–4h per task; one concern per PR; strict locality of edits.
+- **TDD:** Red → Green → Refactor per change. Tests first (unit/integration/acceptance). Coverage: lines ≥ 85%, branches ≥ 70%.
+- **CI Gates:** lint, typecheck, unit, integration, e2e/smoke, perf (Lighthouse/k6), a11y (axe/pa11y), SAST/DAST/secrets/SCA, SBOM/licenses, contract (PACT), IaC (OPA/Conftest).
+- **Security/Privacy:** No secrets. Param queries, validate I/O, AuthN/AuthZ, CSP/SSRF guards. Data map + delete/export tests for PII.
+- **Perf Budgets:** Web LCP ≤ 2.5s / CLS ≤ 0.1 (p75-mid), API p95 ≤ 300ms, Mobile 60fps (<1% jank).
+- **Accessibility:** WCAG 2.1 AA. Zero violations.
+- **Observability:** Structured logs, trace IDs, RED/USE metrics, `/health`, synthetic ping/click checks.
+- **Release Safety:** Feature flags, reversible migrations, canary deploys, rollback ≤ 10 min.
+- **Docs/Runbook:** Update inline docs, README/CHANGELOG, runbook (alerts, rollback, flags).
+
+## Execution Loop (Per Task)
+1. **Emit Checklist:** List acceptance criteria (IDs) and map each → tests and files.
+2. **Write Failing Tests:** Name tests with checklist IDs.
+3. **Implement Minimal Code:** Only what is needed to pass tests; keep scope local.
+4. **Refactor & Self-Critique:** Fix smells; ensure security/a11y/perf/observability; add flags.
+5. **Produce Artifacts:** 
+   - Diffs for code/tests/docs
+   - Coverage %, Lighthouse/k6, axe reports
+   - SBOM + license summary
+   - Feature flag config
+   - Runbook updates
+6. **Stop & Await CI:** If red, analyze failing jobs and iterate only on failing scope.
+
+## Output Discipline
+- Prefer unified diffs and executable commands.
+- Keep responses short, technical, and deterministic.
+- No speculative APIs, no placeholder secrets, no bundling.
+
+## Refuse When
+- Request is out-of-scope or merges multiple concerns
+- Mandatory gate is failing
+- Change would be irreversible (no flag/migration rollback)
+
+> Ethos: *Build brick by brick, test by test, commit by commit.* Prioritize simplicity and user trust — software that **just works**.
+MD
+
+# =========================
+# 5) .github/workflows/ironclad.yml (NEW/OVERWRITE)
+# =========================
+cat > .github/workflows/ironclad.yml <<'YML'
+name: ironclad
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint-type:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci || true
+      - run: npm run lint || true
+      - run: npm run typecheck || true
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci || true
+      - run: npm test -- --ci --reporters=default --reporters=jest-junit || true
+
+  coverage-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci || true
+      - run: npm run test:coverage || true
+      - name: Enforce coverage
+        run: node ./scripts/enforce-coverage.js --lines 85 --branches 70
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secret scan
+        uses: trufflesecurity/trufflehog@main
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+
+  licenses-sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate SBOM
+        run: npx @cyclonedx/cyclonedx-npm --output-file sbom.json || true
+      - name: Scan licenses
+        run: npx license-checker --summary --production || true
+
+  web-a11y-perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci || true
+      - run: npm run build || true
+      - run: npm run start & npx wait-on http://localhost:3000 || true
+      - name: axe-core
+        run: npx @axe-core/cli http://localhost:3000 --exit 1 || true
+      - name: Lighthouse
+        run: npx @lhci/cli autorun --assert.preset=lighthouse:recommended || true
+
+  api-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci || true
+      - run: npm run build || true
+      - run: npm run start:test & npx wait-on http://localhost:4000/health || true
+      - name: Pact/Contract tests
+        run: npm run contract:test || true
+
+  perf-k6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run k6
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: perf/api-smoke.js
+      - name: Enforce p95 budget
+        run: node scripts/assert-k6-p95.js --max 300
+
+  e2e-smoke:
+    needs: [lint-type, unit-tests, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci || true
+      - run: npm run e2e:smoke || true
+YML
+
+# =========================
+# 6) scripts/enforce-coverage.js (NEW/OVERWRITE)
+# =========================
+cat > scripts/enforce-coverage.js <<'JS'
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+
+const args = require('minimist')(process.argv.slice(2));
+const minLines = Number(args.lines || 85);
+const minBranches = Number(args.branches || 70);
+const summaryPath = path.resolve('coverage/coverage-summary.json');
+
+if (!fs.existsSync(summaryPath)) {
+  console.error(`coverage summary not found at ${summaryPath}`);
+  process.exit(1);
+}
+
+const data = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+const totals = data.total || {};
+const lines = totals.lines?.pct ?? 0;
+const branches = totals.branches?.pct ?? 0;
+
+console.log(`Coverage -> lines: ${lines}%, branches: ${branches}% (targets lines>=${minLines}, branches>=${minBranches})`);
+if (lines < minLines || branches < minBranches) {
+  console.error('Coverage gate failed');
+  process.exit(1);
+}
+console.log('Coverage gate passed');
+JS
+chmod +x scripts/enforce-coverage.js
+
+# =========================
+# 7) scripts/assert-k6-p95.js (NEW/OVERWRITE)
+# =========================
+cat > scripts/assert-k6-p95.js <<'JS'
+#!/usr/bin/env node
+const fs = require('fs');
+
+const args = require('minimist')(process.argv.slice(2));
+const max = Number(args.max || 300);
+const reportFile = 'k6-summary.json'; // ensure your k6 run writes this
+
+if (!fs.existsSync(reportFile)) {
+  console.error(`k6 report not found: ${reportFile}`);
+  process.exit(1);
+}
+const report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+
+// Adjust parsing to your k6 output format:
+const p95 = report.metrics && (report.metrics.http_req_duration?.p(95) || report.metrics.http_req_duration?.percentiles?.p95);
+if (!p95) {
+  console.error('Could not find p95 in k6 report.');
+  process.exit(1);
+}
+
+console.log(`k6 p95: ${p95} ms (max ${max} ms)`);
+if (p95 > max) {
+  console.error('Performance budget failed.');
+  process.exit(1);
+}
+console.log('Performance budget passed.');
+JS
+chmod +x scripts/assert-k6-p95.js
+
+# =========================
+# 8) .github/pull_request_template.md (NEW/OVERWRITE)
+# =========================
+cat > .github/pull_request_template.md <<'MD'
+## Summary
+- Checklist ID(s): <!-- link to acceptance checklist -->
+- Scope: <!-- single concern -->
+
+## Gates (tick all before request review)
+- [ ] **TDD**: failing test → green → refactor (test IDs: …)
+- [ ] **Coverage** ≥ 85% lines / 70% branches (attach report)
+- [ ] **Security**: secrets/SAST/SCA green
+- [ ] **Privacy**: data map + delete/export tests (if PII)
+- [ ] **Perf**: budgets met (Lighthouse/k6 attached)
+- [ ] **A11y**: axe/pa11y green
+- [ ] **Observability**: logs/metrics/traces + `/health`
+- [ ] **Flags/Canary**: guarded + rollback steps in runbook
+- [ ] **Docs**: README/CHANGELOG updated; runbook link
+
+## Risk & Rollback
+- Risk: <!-- low/med/high, why -->
+- Rollback: <!-- steps incl. flag/migration rollback in ≤10 min -->
+MD
+
+# =========================
+# 9) README.md (OVERWRITE — concise usage)
+# =========================
+cat > README.md <<'MD'
+# Ironclad DevOps Rulebook v2.1 — It Just Works
+
+This repo hosts policy-as-code for atomic, TDD-first, shift-left security & observability.
+- **Policy**: `devops_agent_policy.yaml`
+- **Cursor rules**: `.cursorrules`
+- **Prompts**: `gemini.md`, `agent.md`
+- **CI**: `.github/workflows/ironclad.yml`
+- **Scripts**: `scripts/enforce-coverage.js`, `scripts/assert-k6-p95.js`
+- **PR template**: `.github/pull_request_template.md`
+
+## Quick Start
+1. Mark CI jobs as **required** in branch protection.
+2. Use **feature flags** and **canary** for risky changes.
+3. Keep tasks **1–4h**, TDD **red→green→refactor**, and **update docs**.
+4. Budgets: Web LCP ≤ 2.5s, API p95 ≤ 300ms, Mobile 60fps.
+
+*Ethos: build brick by brick, test by test, commit by commit—software that just works.*
+MD

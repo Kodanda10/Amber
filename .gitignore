@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Local artifacts
+.vercel
+nextjs-app/instance/
+nextjs-app/backend/.venv/
+nextjs-app/backend/__pycache__/
+nextjs-app/backend/tests/__pycache__/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
