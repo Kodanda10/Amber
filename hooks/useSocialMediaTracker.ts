@@ -2,22 +2,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Leader, SocialMediaPost } from '../types';
 import { INITIAL_LEADERS } from '../constants';
-
-// This function simulates fetching data from a backend.
-// In a real application, this would be a network request to your server.
-const fetchPostsFromBackend = async (leader: Leader): Promise<SocialMediaPost[]> => {
-  console.log(`Fetching posts for ${leader.name} from backend...`);
-  // In a real app, you would fetch from an endpoint like:
-  // const response = await fetch(`/api/posts?handle=${leader.handles.facebook}`);
-  // if (!response.ok) {
-  //   throw new Error(`Failed to fetch posts for ${leader.name}`);
-  // }
-  // const data = await response.json();
-  // For now, we return an empty array as we don't have a live backend.
-  // Replace this with your actual backend call.
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  return []; 
-};
+import { fetchPostsFromBackend } from '../services/api';
 
 
 export const useSocialMediaTracker = () => {
@@ -84,7 +69,6 @@ export const useSocialMediaTracker = () => {
         [...prev.filter(p => p.leaderId !== leaderId), ...newPosts]
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       );
-    // Fix: Added missing opening brace for the catch block.
     } catch (e) {
       setError(`Failed to refresh posts for ${leader.name}.`);
       console.error(e);
