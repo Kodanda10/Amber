@@ -6,6 +6,7 @@ import uuid
 import hashlib
 import json
 import time
+import re
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
@@ -18,6 +19,7 @@ from werkzeug.exceptions import HTTPException
 from news_sources import fetch_articles
 from sentiment import classify_sentiment
 import facebook_client
+from x_client import XClient
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 import logging
 
@@ -25,11 +27,17 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///amber.db")
 POST_LIMIT = int(os.getenv("NEWS_POST_LIMIT", "6"))
 FACEBOOK_GRAPH_ENABLED = os.getenv("FACEBOOK_GRAPH_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
 FACEBOOK_GRAPH_LIMIT = int(os.getenv("FACEBOOK_GRAPH_LIMIT", "10"))
+X_INGESTION_ENABLED = os.getenv("X_INGESTION_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
+X_BEARER_TOKEN = os.getenv("X_BEARER_TOKEN", "")
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "amber-dev-secret")
 ADMIN_JWT_TTL = int(os.getenv("ADMIN_JWT_TTL", "3600"))
-ADMIN_BOOTSTRAP_SECRET = os.getenv("ADMIN_BOOTSTRAP_SECRET", ADMIN_JWT_SECRET)
+ADMIN_BOOTSTRAP_SECRET = os.getenv("ADMIN_BOOTSTRAP_SECRET", "amber-bootstrap-dev-secret")
 
 app = Flask(__name__)
+
+x_client_instance = None
+if X_INGESTION_ENABLED:
+    x_client_instance = XClient(bearer_token=X_BEARER_TOKEN)
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -118,6 +126,7 @@ def _to_naive_datetime(value: Optional[str]) -> datetime:
     try:
         dt = datetime.fromisoformat(normalised)
     except ValueError:
+        app.logger.warning("datetime_parse_failed value=%r", value)
         return datetime.utcnow()
     if dt.tzinfo:
         return dt.astimezone(timezone.utc).replace(tzinfo=None)
@@ -136,6 +145,10 @@ def _facebook_avatar(handle: Optional[str]) -> Optional[str]:
         return None
     username = handle.lstrip("@")
     if not username:
+        return None
+    # allow only alphanumeric, dot, and single underscores/hyphens to mitigate injection / path tricks
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,100}", username):
+        app.logger.warning("invalid_facebook_handle handle=%s", username)
         return None
     return f"https://graph.facebook.com/{username}/picture?type=large&width=200&height=200"
 
@@ -193,14 +206,19 @@ def _log_request(resp):
 
 
 def _hash_article(article: Dict) -> str:
-    base = f"{article.get('url','')}|{article.get('title','')}|{article.get('summary','')}"
-    return hashlib.sha256(base.encode("utf-8")).hexdigest()
+    base_obj = {
+        "url": article.get("url", ""),
+        "title": article.get("title", ""),
+        "summary": article.get("summary", ""),
+    }
+    base_json = json.dumps(base_obj, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(base_json.encode("utf-8")).hexdigest()
 
 
 def _sync_posts_for_leader(leader: Leader) -> Tuple[List[Dict], str]:
-    """Upsert posts for a leader from Graph API or news sources.
+    """Upsert posts for a leader from X, Graph API or news sources.
 
-    Prefers Facebook Graph data when enabled and gracefully falls back to
+    Prefers X data when enabled, then Facebook Graph data, and gracefully falls back to
     existing news ingestion. If no upstream data is available, emits a
     localized sample post so the UI is not empty.
     """
@@ -222,6 +240,24 @@ def _sync_posts_for_leader(leader: Leader) -> Tuple[List[Dict], str]:
     avatar_url = _facebook_avatar(leader.handles.get("facebook")) if leader.handles else None
     upserted_posts: List[Post] = []
     origin = "news"
+
+    x_handle = leader.handles.get("x") if leader.handles else None
+    if X_INGESTION_ENABLED and x_client_instance and x_handle:
+        try:
+            x_records = x_client_instance.fetch_posts(x_handle)
+        except Exception as exc:  # noqa: BLE001 - log but continue with fallback
+            app.logger.warning("x_fetch_failed leader=%s error=%s", leader.name, exc)
+        else:
+            if x_records:
+                upserted_posts = _upsert_x_posts(
+                    leader,
+                    x_records,
+                    by_link,
+                    by_platform_id,
+                    existing_posts,
+                    avatar_url,
+                )
+                origin = "x"
 
     graph_handle = leader.handles.get("facebook") if leader.handles else None
     if FACEBOOK_GRAPH_ENABLED and graph_handle:
@@ -472,6 +508,111 @@ def _upsert_graph_posts(
 
     return upserted
 
+def _upsert_x_posts(
+    leader: Leader,
+    x_records: List[Dict],
+    by_link: Dict[str, Post],
+    by_platform_id: Dict[str, Post],
+    existing_posts: List[Post],
+    avatar_url: Optional[str],
+) -> List[Post]:
+    now = datetime.utcnow()
+    upserted: List[Post] = []
+
+    for record in x_records:
+        platform_post_id = record.get("id")
+        message = record.get("text") or ""
+        # X API v2 does not provide a permalink_url in the tweet object directly.
+        # It needs to be constructed. For now, we'll use the platform_post_id.
+        permalink = f"https://twitter.com/{leader.handles.get('x', '')}/status/{platform_post_id}" if platform_post_id and leader.handles.get('x') else None
+
+        # For X, we don't get a timestamp for each tweet in the free tier.
+        # We will use the current time.
+        timestamp = now
+        sentiment, score = classify_sentiment(message, return_score=True)
+        media_url = None # Placeholder for media URL
+        author_avatar = avatar_url # Placeholder for author avatar
+
+        article_hash = _hash_article({
+            "url": permalink or platform_post_id or "",
+            "title": message,
+            "summary": message,
+        })
+
+        metrics_base = {
+            "likes": 0,
+            "comments": 0,
+            "shares": 0,
+            "origin": "x",
+            "link": permalink,
+            "avatarUrl": author_avatar,
+            "mediaUrl": media_url,
+            "platformPostId": platform_post_id,
+            "language": "unknown", # Placeholder for language
+            "hash": article_hash,
+        }
+
+        post: Optional[Post] = None
+        if platform_post_id and platform_post_id in by_platform_id:
+            post = by_platform_id[platform_post_id]
+        elif permalink and permalink in by_link:
+            post = by_link[permalink]
+
+        if post:
+            if timestamp > post.timestamp:
+                post.timestamp = timestamp
+            post.content = message or post.content
+            post.sentiment = sentiment
+            post.platform = "Twitter"
+            existing_metrics = post.metrics or {}
+            first_seen = existing_metrics.get("firstSeenAt") or existing_metrics.get("first_seen_at")
+            merged = {**metrics_base, **existing_metrics}
+            if not first_seen:
+                first_seen = post.created_at.isoformat() if post.created_at else now.isoformat()
+            merged["firstSeenAt"] = first_seen
+            merged["lastSeenAt"] = now.isoformat()
+            merged["sentimentScore"] = score
+            old_hash = existing_metrics.get("hash")
+            revision = existing_metrics.get("revision", 1)
+            if old_hash and old_hash != article_hash:
+                revision += 1
+            merged["revision"] = revision
+            post.metrics = merged
+            if platform_post_id:
+                by_platform_id[platform_post_id] = post
+            if permalink:
+                by_link[permalink] = post
+        else:
+            metrics_new = {
+                **metrics_base,
+                "firstSeenAt": now.isoformat(),
+                "lastSeenAt": now.isoformat(),
+                "revision": 1,
+                "sentimentScore": score,
+            }
+            post = Post(
+                id=str(uuid.uuid4()),
+                leader_id=leader.id,
+                platform="Twitter",
+                content=message or "",
+                timestamp=timestamp,
+                sentiment=sentiment,
+                metrics=metrics_new,
+                verification_status="Needs Review",
+            )
+            post.leader = leader
+            db.session.add(post)
+            db.session.flush()
+            existing_posts.append(post)
+            if platform_post_id:
+                by_platform_id[platform_post_id] = post
+            if permalink:
+                by_link[permalink] = post
+
+        upserted.append(post)
+
+    return upserted
+
 
 def _ensure_sample_post(
     leader: Leader,
@@ -556,57 +697,57 @@ def seed_data() -> None:
     leaders_payload = [
         {
             "name": "Vishnu Deo Sai",
-            "handles": {"facebook": "@vishnudeosai1"},
+            "handles": {"facebook": "@vishnudeosai1", "x": "@vishnudeosai1"},
             "tracking_topics": ["tribal welfare", "state development", "governance"],
         },
         {
             "name": "Laxmi Rajwade",
-            "handles": {"facebook": "@laxmirajwadebjp"},
+            "handles": {"facebook": "@laxmirajwadebjp", "x": "@laxmirajwadebjp"},
             "tracking_topics": ["women empowerment", "public health", "local issues"],
         },
         {
             "name": "Ramvichar Netam",
-            "handles": {"facebook": "@RamvicharNetamB.J.P"},
+            "handles": {"facebook": "@RamvicharNetamB.J.P", "x": "@RamvicharNetamBJP"},
             "tracking_topics": ["agriculture", "rural development", "policy making"],
         },
         {
             "name": "O. P. Choudhary",
-            "handles": {"facebook": "@OPChoudhary.India"},
+            "handles": {"facebook": "@OPChoudhary.India", "x": "@OPChoudhary_Ind"},
             "tracking_topics": ["education reform", "finance", "urban development"],
         },
         {
             "name": "Lakhan Lal Dewangan",
-            "handles": {"facebook": "@lakhanlal.dewangan"},
+            "handles": {"facebook": "@lakhanlal.dewangan", "x": "@lakhanlal_d"},
             "tracking_topics": ["industrial policy", "infrastructure", "skill development"],
         },
         {
             "name": "S. B. Jaiswal",
-            "handles": {"facebook": "@sbjaiswalbjp"},
+            "handles": {"facebook": "@sbjaiswalbjp", "x": "@sbjaiswalbjp"},
             "tracking_topics": ["youth outreach", "party organisation", "campaign strategy"],
         },
         {
             "name": "Arun Sao",
-            "handles": {"facebook": "@arunsaobjp"},
+            "handles": {"facebook": "@arunsaobjp", "x": "@arunsaobjp"},
             "tracking_topics": ["organisation building", "governance", "public welfare"],
         },
         {
             "name": "Tank Ram Verma",
-            "handles": {"facebook": "@tankramvermaofficial"},
+            "handles": {"facebook": "@tankramvermaofficial", "x": "@tankramverma"},
             "tracking_topics": ["rural development", "tribal welfare", "healthcare"],
         },
         {
             "name": "Dayal Das Baghel",
-            "handles": {"facebook": "@Dayaldasbaghel70"},
+            "handles": {"facebook": "@Dayaldasbaghel70", "x": "@DayaldasBaghel"},
             "tracking_topics": ["cultural heritage", "tourism", "community programs"],
         },
         {
             "name": "Vijay Ratan",
-            "handles": {"facebook": "@vijayratancg"},
+            "handles": {"facebook": "@vijayratancg", "x": "@vijayratancg"},
             "tracking_topics": ["grassroots mobilisation", "education", "rural infrastructure"],
         },
         {
             "name": "Kedar Kashyap",
-            "handles": {"facebook": "@kedarkashyapofficial"},
+            "handles": {"facebook": "@kedarkashyapofficial", "x": "@KedarKashyapBJP"},
             "tracking_topics": ["tribal affairs", "education", "public health"],
         },
     ]

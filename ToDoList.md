@@ -51,6 +51,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ING-009 | Expand Leader Catalog & Dashboard Controls | Seed 11 leaders and expose roster with delete action on dashboard | Seeded handles list matches brief; dashboard roster lists leaders with remove control | tests/test_leader_seed.py + src/tests/dashboard.test.tsx + src/components/Dashboard.test.tsx | P1 | DONE | Sample fallback retained; roster reuses API delete flow |
 | ING-007 | Async Ingestion Worker | Offload ingestion from request thread | Refresh endpoint enqueues job, returns 202 | queue test (mock) | P2 | TODO | After Graph API |
 | ING-008 | Translation Pipeline (Optional) | (If ENABLE_TRANSLATION) store translated content | metrics.translation fields present | translation toggle test | P3 | DEFERRED | Pending clarity |
+| ING-010 | X (Twitter) API Ingestion (Phase 1) | Fetch posts via X API for leaders w/ handles. X will be primary, Facebook is fallback. | For a test leader, >=1 post stored with origin=x; avatar + media persisted | tests/test_x_ingestion.py | P1 | WIP | New feature |
 
 ### 2.2 Review & Moderation
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
