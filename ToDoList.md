@@ -1,6 +1,8 @@
 # Amber Development Phased To‑Do List (Authoritative Roadmap)
 
 This document is the SINGLE SOURCE OF TRUTH for all engineering tasks. It MUST be:
+> SSOT Product Blurb: Social Media Extraction App — Chhattisgarh Leadership Intelligence. Each social post becomes an Event with What/When/Where/Whom/Said-What extracted; outputs structured datasets, profiles, and analysis.
+
 - Updated with every meaningful code change (add/change status, dates, notes)
 - Followed with strict TDD (write failing test first, see TDD Template below)
 - Reflected in commits (reference Task IDs in commit messages, e.g. `feat(ingest): add revision hash [ING-004]`)

@@ -1,8 +1,6 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# SSOT — Product Blurb
 
-# Social Media Extraction App — Chhattisgarh Leadership Intelligence
+Social Media Extraction App — Chhattisgarh Leadership Intelligence
 
 We’re building a Social Media Extraction App that tracks the digital activity of MLAs, Opposition leaders, Collectors, and District profiles across platforms.
 
@@ -14,23 +12,3 @@ Each social post is treated as an Event. From every post we automatically extrac
 - Said-What (core statement/quote).
 
 This turns unstructured posts into structured datasets and individual digital profiles (leader, officer, district). The system then generates analysis reports showing activity levels, trending issues, co-appearances, and geography-wise patterns—forming a complete social intelligence map for governance, politics, and public engagement.
-
-For the complete TDD-first atomic backlog and conventions, see PRD.md and ToDoList.md.
-
-
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/1r29LSMqub4B9Y_EbA2t6JGsMQHvEhvAl
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`

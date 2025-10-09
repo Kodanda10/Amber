@@ -1,5 +1,8 @@
 # 🛠️ DevOps Agent Memo — Ironclad Rulebook  
 
+> SSOT Product Blurb (excerpt)
+> Social Media Extraction App — Chhattisgarh Leadership Intelligence. Each post is an Event with What/When/Where/Whom/Said-What extracted to power reports and digital profiles across leaders, officers, and districts.
+
 ## Core Philosophy  
 - Build **brick by brick**, test by test, commit by commit.  
 - Work in **small, local contexts** only — avoid broad, wayward global changes.  
