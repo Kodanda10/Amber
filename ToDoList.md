@@ -81,7 +81,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | FE-CORE-001 | Post Sentiment Visualization | Show sentiment score intensity | UI gradient or bar reflects score | DOM test | P1 | TODO | |
-| FE-CORE-002 | Infinite Scroll (Stable) | Already implemented; stabilize w/ tests | IntersectionObserver mocked & loads more | observer test | P1 | TODO | Add test |
+| FE-CORE-002 | Infinite Scroll (Stable) | Already implemented; stabilize w/ tests | IntersectionObserver mocked & loads more | observer test | P1 | DONE | 9 tests covering observer lifecycle |
 | FE-CORE-003 | Error Boundary | Catch render errors gracefully | Throwing child replaced by fallback | boundary test | P2 | TODO | |
 
 ### 2.6 Security & Auth
@@ -125,17 +125,17 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 ---
 ## 3. CURRENT SNAPSHOT
 - Phase Active: P1 (Observability & Quality)
-- Highest Priority Upcoming: FE-CORE-002, OBS-005
-- Test Coverage: Backend at 83% (>80% threshold enforced); Vitest covers PostCard Graph metadata; pytest covers admin token flow + error logging shape + role-based access.
+- Highest Priority Upcoming: OBS-005, FE-CORE-001
+- Test Coverage: Backend at 83% (>80% threshold enforced); Frontend 18 tests passing with IntersectionObserver mock; Vitest covers PostCard Graph metadata + infinite scroll; pytest covers admin token flow + error logging shape + role-based access.
 - Logging: Structured request + ingest success + global error handler emitting JSON payloads.
 - Auth: Role-based access control with reviewer and admin roles protecting review endpoints.
 - CI: Backend coverage gate enforcing >=80% threshold.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. FE-CORE-002 (Harden infinite scroll with observer test coverage).
-2. OBS-005 (Codify coverage thresholds in reporting pipeline).
-3. FE-CORE-001 (Post sentiment visualization).
+1. OBS-005 (Codify coverage thresholds in reporting pipeline).
+2. FE-CORE-001 (Post sentiment visualization).
+3. L10N-003 (Toggle locale preference).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
