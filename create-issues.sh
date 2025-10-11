@@ -8,7 +8,7 @@ set -e
 REPO="Kodanda10/Amber"
 TODOLIST_URL="https://github.com/Kodanda10/Amber/blob/roadmap/fill-gaps/ToDoList.md"
 
-echo "🚀 Creating 29 GitHub issues for Amber Roadmap Gaps..."
+echo "🚀 Creating 27 GitHub issues for Amber Roadmap Gaps..."
 echo "Repository: $REPO"
 echo ""
 
@@ -787,11 +787,11 @@ create_issue \
 # ============================================================================
 
 echo ""
-echo "✅ Successfully created 29 GitHub issues!"
+echo "✅ Successfully created 27 GitHub issues!"
 echo ""
 echo "Summary:"
-echo "  - TODO tasks: 23"
-echo "  - BLOCKED questions: 3"
+echo "  - TODO tasks: 24"
 echo "  - Open questions: 3"
+echo "  - Total: 27 issues"
 echo ""
 echo "View all issues: https://github.com/$REPO/issues"

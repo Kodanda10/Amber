@@ -14,12 +14,12 @@ This directory contains tools to create GitHub issues for all TODO, BLOCKED, and
 ./create-issues.sh
 ```
 
-This will create **29 GitHub issues** with complete specifications.
+This will create **27 GitHub issues** with complete specifications.
 
 ## What Gets Created
 
 ### Issue Breakdown
-- **26 TODO tasks** across 10 development phases
+- **24 TODO tasks** across 10 development phases
 - **3 QUESTION issues** for blocking architectural decisions
 
 ### All issues include:
@@ -64,7 +64,7 @@ If you prefer to create issues manually, see [ISSUE_CREATION_PLAN.md](ISSUE_CREA
 After running the script:
 
 1. Visit https://github.com/Kodanda10/Amber/issues
-2. Verify 29 new issues were created
+2. Verify 27 new issues were created
 3. Check that labels are applied correctly
 4. Confirm all issues link to ToDoList.md
 

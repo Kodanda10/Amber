@@ -866,7 +866,7 @@ Need to decide where to store analytics data and aggregations.
 
 ## Summary Statistics
 
-**Total Issues to Create:** 29
+**Total Issues to Create:** 27
 
 **By Phase:**
 - Ingestion: 1 issue
@@ -888,7 +888,7 @@ Need to decide where to store analytics data and aggregations.
 - Questions: 3 issues
 
 **By Status:**
-- TODO: 26 issues
-- BLOCKED (Questions): 3 issues
+- TODO: 24 issues
+- Questions (BLOCKED): 3 issues
 
 **Reference:** [ToDoList.md](ToDoList.md)
