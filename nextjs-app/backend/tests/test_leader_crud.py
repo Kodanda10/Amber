@@ -1,4 +1,6 @@
-import os, sys, importlib, uuid
+import os
+import sys
+import importlib
 from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
@@ -24,7 +26,7 @@ def test_leader_crud():
     list_resp = client.get("/api/leaders")
     assert list_resp.status_code == 200
     leaders = list_resp.get_json()
-    assert any(l["id"] == lid for l in leaders)
+    assert any(leader["id"] == lid for leader in leaders)
 
     # Delete
     del_resp = client.delete(f"/api/leaders/{lid}")
@@ -33,4 +35,4 @@ def test_leader_crud():
 
     # Verify deletion
     list_after = client.get("/api/leaders").get_json()
-    assert not any(l["id"] == lid for l in list_after)
+    assert not any(leader["id"] == lid for leader in list_after)

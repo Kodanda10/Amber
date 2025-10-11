@@ -22,6 +22,9 @@ const eslintConfig = [
       "hooks/**",
       "constants.tsx",
       "constants 2.tsx",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "src/tests/**",
     ],
   },
 ];

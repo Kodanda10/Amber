@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 import uuid
 
-import pytest
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("FACEBOOK_GRAPH_ENABLED", "1")

@@ -20,17 +20,13 @@ class ResizeObserverMock {
 
 describe('Dashboard', () => {
   beforeAll(() => {
-    // @ts-expect-error test shim
-    global.IntersectionObserver = IntersectionObserverMock;
-    // @ts-expect-error test shim
-    global.ResizeObserver = ResizeObserverMock;
+    (global as any).IntersectionObserver = IntersectionObserverMock;
+    (global as any).ResizeObserver = ResizeObserverMock;
   });
 
   afterAll(() => {
-    // @ts-expect-error cleanup shim
-    delete global.IntersectionObserver;
-    // @ts-expect-error cleanup shim
-    delete global.ResizeObserver;
+    delete (global as any).IntersectionObserver;
+    delete (global as any).ResizeObserver;
   });
 
   it('highlights language distribution for Hindi posts', () => {
