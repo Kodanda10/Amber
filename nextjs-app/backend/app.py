@@ -7,6 +7,7 @@ import hashlib
 import json
 import time
 from datetime import datetime, timezone
+from functools import wraps
 from typing import Dict, List, Optional, Tuple
 
 from flask import Flask, jsonify, request, g
@@ -35,9 +36,6 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
-
-
-from functools import wraps
 
 
 def require_auth(allowed_roles: Optional[List[str]] = None):
