@@ -75,7 +75,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | L10N-001 | Hindi Date Formatting | Show dates in Hindi locale style | Example post displays Hindi month/Devanagari numerals | util unit test | P1 | DONE | |
 | L10N-002 | Language Badge | Post card shows language chip | Badge rendered for multiple languages | component test | P1 | DONE | Dashboard + PostCard tests cover Hindi + English |
-| L10N-003 | Toggle Locale Preference | User toggle hi/en | Setting persisted & reflected | preference test | P2 | TODO | |
+| L10N-003 | Toggle Locale Preference | User toggle hi/en | Setting persisted & reflected | preference test | P2 | DONE | LocaleToggle component with localStorage persistence |
 
 ### 2.5 Frontend Components & Data UX
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
@@ -124,19 +124,20 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 
 ---
 ## 3. CURRENT SNAPSHOT
-- Phase Active: P1 (Observability & Quality)
-- Highest Priority Upcoming: L10N-003, REV-002, REV-003
-- Test Coverage: Backend at 83% (>80% threshold enforced); Frontend 30 tests passing with IntersectionObserver mock + sentiment visualization; Vitest covers PostCard Graph metadata + infinite scroll + sentiment bar; pytest covers admin token flow + error logging shape + role-based access.
+- Phase Active: P1 (Observability & Quality) + P2 Enhancements
+- Highest Priority Upcoming: REV-002, REV-003, REV-004
+- Test Coverage: Backend at 83% (>80% threshold enforced); Frontend 40 tests passing; Comprehensive test coverage across all features.
 - Logging: Structured request + ingest success + global error handler emitting JSON payloads.
 - Auth: Role-based access control with reviewer and admin roles protecting review endpoints.
 - CI: Backend coverage gate enforcing >=80% threshold.
-- UI: Sentiment intensity visualization with color-coded bars.
+- UI: Sentiment intensity visualization with color-coded bars; locale toggle with persistence.
+- L10N: English/Hindi toggle with localStorage persistence.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. L10N-003 (Toggle locale preference).
-2. REV-002 (Reviewer attribution on approve/reject).
-3. REV-003 (Edit-in-review workflow).
+1. REV-002 (Reviewer attribution on approve/reject).
+2. REV-003 (Edit-in-review workflow).
+3. REV-004 (Audit trail persistence).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
