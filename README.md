@@ -15,13 +15,14 @@ Project Amber is a full-stack application designed to monitor, aggregate, and an
 
 ### Key Features
 
-- **Multi-Platform Ingestion**: Automated content fetching from Facebook, Twitter, and news sources
+- **Multi-Platform Ingestion**: Automated content fetching from Facebook, Twitter/X, and news sources
 - **Real-time Sentiment Analysis**: AI-powered sentiment scoring using VADER and transformer models
 - **Human Review Workflow**: Built-in content moderation and verification system
 - **Multilingual Support**: Hindi localization with date formatting and language badges
 - **Interactive Dashboard**: Rich data visualization with charts and leader roster management
 - **Robust Testing**: Comprehensive test coverage with unit, integration, and E2E tests
 - **Secure Admin Controls**: JWT-based authentication for protected endpoints
+- **Twitter/X Integration**: Native Twitter API v2 client with rate limiting and pagination support
 
 ## 📋 Table of Contents
 
@@ -90,12 +91,17 @@ Project Amber is a full-stack application designed to monitor, aggregate, and an
 
 4. **Set up environment variables**
    
-   Create a `.env.local` file in the `nextjs-app` directory:
+   Create a `.env.local` file in the `nextjs-app` directory (see `.env.example` for all options):
    ```bash
    # Optional: Facebook Graph API Integration
    FACEBOOK_GRAPH_ENABLED=1
    FACEBOOK_GRAPH_TOKEN=your_meta_app_token
    FACEBOOK_GRAPH_LIMIT=5
+   
+   # Optional: Twitter/X API Integration
+   # Get your bearer token from: https://developer.twitter.com/en/portal/dashboard
+   TWITTER_BEARER_TOKEN=your_twitter_bearer_token
+   X_INGEST_ENABLED=false
    
    # Optional: Admin Authentication
    ADMIN_JWT_SECRET=your_secret_key
@@ -104,6 +110,14 @@ Project Amber is a full-stack application designed to monitor, aggregate, and an
    # Database (defaults to SQLite in development)
    DATABASE_URL=sqlite:///amber.db
    ```
+   
+   **Twitter/X API Setup:**
+   - Visit [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
+   - Create a new app or use an existing one
+   - Navigate to "Keys and tokens" tab
+   - Generate a "Bearer Token" (API v2 access)
+   - Copy the token to your `.env.local` file as `TWITTER_BEARER_TOKEN`
+   - Set `X_INGEST_ENABLED=true` when ready to enable X ingestion
 
 5. **Run the development servers**
    
