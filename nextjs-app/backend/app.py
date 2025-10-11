@@ -556,57 +556,57 @@ def seed_data() -> None:
     leaders_payload = [
         {
             "name": "Vishnu Deo Sai",
-            "handles": {"facebook": "@vishnudeosai1"},
+            "handles": {"facebook": "@vishnudeosai1", "x": "vishnudeosai1"},
             "tracking_topics": ["tribal welfare", "state development", "governance"],
         },
         {
             "name": "Laxmi Rajwade",
-            "handles": {"facebook": "@laxmirajwadebjp"},
+            "handles": {"facebook": "@laxmirajwadebjp", "x": "laxmirajwadebjp"},
             "tracking_topics": ["women empowerment", "public health", "local issues"],
         },
         {
             "name": "Ramvichar Netam",
-            "handles": {"facebook": "@RamvicharNetamB.J.P"},
+            "handles": {"facebook": "@RamvicharNetamB.J.P", "x": "RamvicharNetam"},
             "tracking_topics": ["agriculture", "rural development", "policy making"],
         },
         {
             "name": "O. P. Choudhary",
-            "handles": {"facebook": "@OPChoudhary.India"},
+            "handles": {"facebook": "@OPChoudhary.India", "x": "OPChoudhary_BJP"},
             "tracking_topics": ["education reform", "finance", "urban development"],
         },
         {
             "name": "Lakhan Lal Dewangan",
-            "handles": {"facebook": "@lakhanlal.dewangan"},
+            "handles": {"facebook": "@lakhanlal.dewangan", "x": "lakhanlaldew"},
             "tracking_topics": ["industrial policy", "infrastructure", "skill development"],
         },
         {
             "name": "S. B. Jaiswal",
-            "handles": {"facebook": "@sbjaiswalbjp"},
+            "handles": {"facebook": "@sbjaiswalbjp", "x": "sbjaiswalbjp"},
             "tracking_topics": ["youth outreach", "party organisation", "campaign strategy"],
         },
         {
             "name": "Arun Sao",
-            "handles": {"facebook": "@arunsaobjp"},
+            "handles": {"facebook": "@arunsaobjp", "x": "arunsaobjp"},
             "tracking_topics": ["organisation building", "governance", "public welfare"],
         },
         {
             "name": "Tank Ram Verma",
-            "handles": {"facebook": "@tankramvermaofficial"},
+            "handles": {"facebook": "@tankramvermaofficial", "x": "tankramverma"},
             "tracking_topics": ["rural development", "tribal welfare", "healthcare"],
         },
         {
             "name": "Dayal Das Baghel",
-            "handles": {"facebook": "@Dayaldasbaghel70"},
+            "handles": {"facebook": "@Dayaldasbaghel70", "x": "dayaldasbaghel"},
             "tracking_topics": ["cultural heritage", "tourism", "community programs"],
         },
         {
             "name": "Vijay Ratan",
-            "handles": {"facebook": "@vijayratancg"},
+            "handles": {"facebook": "@vijayratancg", "x": "vijayratancg"},
             "tracking_topics": ["grassroots mobilisation", "education", "rural infrastructure"],
         },
         {
             "name": "Kedar Kashyap",
-            "handles": {"facebook": "@kedarkashyapofficial"},
+            "handles": {"facebook": "@kedarkashyapofficial", "x": "kedarkashyap"},
             "tracking_topics": ["tribal affairs", "education", "public health"],
         },
     ]
