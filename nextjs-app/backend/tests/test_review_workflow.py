@@ -43,12 +43,16 @@ def test_review_workflow():
     assert any(item["postId"] == post_id for item in items)
     review_id = next(item["id"] for item in items if item["postId"] == post_id)
 
+    # Generate admin token for authentication
+    token = app_module.generate_admin_token("test_admin", role="admin")
+    auth_headers = {'Authorization': f'Bearer {token}'}
+
     # Approve
-    approve_resp = client.post(f"/api/review/{review_id}/approve")
+    approve_resp = client.post(f"/api/review/{review_id}/approve", headers=auth_headers)
     assert approve_resp.status_code == 200
     assert approve_resp.get_json()["state"] == "approved"
 
     # Reject (should update state again)
-    reject_resp = client.post(f"/api/review/{review_id}/reject", json={"notes": "Incorrect"})
+    reject_resp = client.post(f"/api/review/{review_id}/reject", json={"notes": "Incorrect"}, headers=auth_headers)
     assert reject_resp.status_code == 200
     assert reject_resp.get_json()["state"] == "rejected"

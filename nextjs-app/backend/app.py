@@ -37,6 +37,47 @@ db = SQLAlchemy(app)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 
+from functools import wraps
+
+
+def require_auth(allowed_roles: Optional[List[str]] = None):
+    """
+    Decorator to require authentication and optionally check roles.
+    
+    Args:
+        allowed_roles: List of allowed roles (e.g., ["admin", "reviewer"]). 
+                      If None, any authenticated user is allowed.
+    
+    Returns:
+        The decorated function or an error response.
+    """
+    if allowed_roles is None:
+        allowed_roles = ["admin", "reviewer"]
+    
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return jsonify({"error": "unauthorized", "details": "Missing or invalid Authorization header"}), 401
+            
+            token = auth_header.split(" ", 1)[1].strip()
+            payload = _verify_admin_token(token)
+            if not payload:
+                return jsonify({"error": "unauthorized", "details": "Invalid or expired token"}), 401
+            
+            # Check role if specific roles are required
+            user_role = payload.get("role", "admin")
+            if allowed_roles and user_role not in allowed_roles:
+                return jsonify({"error": "forbidden", "details": f"Role '{user_role}' not authorized for this action"}), 403
+            
+            # Store payload in flask g for access in the view
+            g.auth_payload = payload
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
 class Leader(db.Model):
     __tablename__ = "leaders"
 
@@ -534,8 +575,8 @@ def _admin_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(ADMIN_JWT_SECRET, salt="amber-admin-token")
 
 
-def generate_admin_token(admin_id: str) -> str:
-    return _admin_serializer().dumps({"admin": admin_id})
+def generate_admin_token(admin_id: str, role: str = "admin") -> str:
+    return _admin_serializer().dumps({"admin": admin_id, "role": role})
 
 
 def _verify_admin_token(token: str) -> Optional[Dict]:
@@ -546,6 +587,9 @@ def _verify_admin_token(token: str) -> Optional[Dict]:
         return None
     if not isinstance(payload, dict) or "admin" not in payload:
         return None
+    # Ensure role is present, default to "admin" for backward compatibility
+    if "role" not in payload:
+        payload["role"] = "admin"
     return payload
 
 
@@ -941,6 +985,7 @@ def _update_review_state(review_id: str, state: str, notes: Optional[str] = None
 
 
 @app.route("/api/review/<review_id>/approve", methods=["POST"])
+@require_auth(allowed_roles=["admin", "reviewer"])
 def approve_review(review_id: str):
     item = _update_review_state(review_id, "approved")
     if not item:
@@ -949,6 +994,7 @@ def approve_review(review_id: str):
 
 
 @app.route("/api/review/<review_id>/reject", methods=["POST"])
+@require_auth(allowed_roles=["admin", "reviewer"])
 def reject_review(review_id: str):
     payload = request.get_json(silent=True) or {}
     item = _update_review_state(review_id, "rejected", payload.get("notes"))

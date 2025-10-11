@@ -88,7 +88,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | SEC-001 | Basic Auth Layer | JWT issuance + protected endpoints | Unauthorized returns 401; valid token passes | auth test | P1 | DONE | Tokenized /api/admin/ping with serializer |
-| SEC-002 | Role-Based Access | reviewer vs admin | Role restrictions enforced on review actions | role test | P1 | TODO | |
+| SEC-002 | Role-Based Access | reviewer vs admin | Role restrictions enforced on review actions | role test | P1 | DONE | Implemented with @require_auth decorator |
 | SEC-003 | Rate Limiting | Per-IP limit on refresh endpoints | Exceed limit returns 429 | rate limit test | P2 | TODO | |
 | SEC-004 | Secrets Scan (CI) | Already added (Gitleaks) | CI artifact shows run | present in workflow | P1 | DONE | Non-blocking for now |
 
@@ -125,16 +125,16 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 ---
 ## 3. CURRENT SNAPSHOT
 - Phase Active: P1 (Observability & Quality)
-- Highest Priority Upcoming: SEC-002, CI-002, FE-CORE-002
-- Test Coverage: Vitest covers PostCard Graph metadata; pytest covers admin token flow + error logging shape.
+- Highest Priority Upcoming: CI-002, FE-CORE-002, OBS-005
+- Test Coverage: Vitest covers PostCard Graph metadata; pytest covers admin token flow + error logging shape + role-based access.
 - Logging: Structured request + ingest success + global error handler emitting JSON payloads.
+- Auth: Role-based access control with reviewer and admin roles protecting review endpoints.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. SEC-002 (Role-based access guardrails on review actions).
-2. CI-002 (Add backend coverage gate once new suites stabilize).
-3. FE-CORE-002 (Harden infinite scroll with observer test coverage).
-4. OBS-005 (Codify coverage thresholds in reporting pipeline).
+1. CI-002 (Add backend coverage gate once new suites stabilize).
+2. FE-CORE-002 (Harden infinite scroll with observer test coverage).
+3. OBS-005 (Codify coverage thresholds in reporting pipeline).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
