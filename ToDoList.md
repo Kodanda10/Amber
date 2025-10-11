@@ -49,6 +49,14 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ING-005 | Add Hindi Locale Support | hl/gl/ceid configurable + UI indicator | API returns language meta + UI badge per post | new i18n test + component snapshot | P1 | DONE | Language badge + Hindi formatter wired into PostCard |
 | ING-006 | Facebook Graph API Ingestion (Phase 1) | Fetch posts via Graph API for leaders w/ handles | For a test leader, >=1 post stored with origin=graph; avatar + media persisted | tests/test_facebook_ingestion.py | P1 | DONE | Feature-flagged graph ingest with media/avatar + news/sample fallback |
 | ING-009 | Expand Leader Catalog & Dashboard Controls | Seed 11 leaders and expose roster with delete action on dashboard | Seeded handles list matches brief; dashboard roster lists leaders with remove control | tests/test_leader_seed.py + src/tests/dashboard.test.tsx + src/components/Dashboard.test.tsx | P1 | DONE | Sample fallback retained; roster reuses API delete flow |
+| ING-010 | X API Client & Configuration | Implement Twitter API v2 client with bearer token auth | Client fetches user timeline, handles rate limits, returns normalized data | tests/test_x_client.py | P1 | DONE | 97% coverage, 14 tests passing |
+| ING-011 | Leader X Handle Schema Update | Add X handles to all seeded leaders | All leaders have x handle in handles dict; API returns x handles | tests/test_leader_seed.py | P1 | DONE | Using existing JSON handles field |
+| ING-012 | X Ingestion Service Integration | Integrate X API with ingestion pipeline | ingest_x_posts() creates posts with origin=x, deduplicates by externalId | tests/test_x_ingestion.py | P1 | DONE | Feature-flagged X_INGEST_ENABLED, 6 tests passing |
+| ING-013 | X Sentiment & Metrics Harmonization | Apply sentiment analysis to X posts | X posts have sentiment scores and platform metadata | tests/test_x_ingestion.py | P1 | DONE | Integrated with ING-012 |
+| ING-014 | X Media & Avatar URL Persistence | Store media/avatar URLs in metrics | X posts persist mediaUrl and avatarUrl in metrics | tests/test_x_ingestion.py | P1 | DONE | Integrated with ING-012 |
+| ING-015 | X Frontend UI Integration | Display X posts in dashboard with platform badge | PostCard shows X badge, filters include X checkbox | Frontend tests | P1 | TODO | |
+| ING-016 | X Review Workflow Coverage | X posts appear in review queue | Review queue includes X posts, approve/reject work | tests/test_review_workflow.py | P1 | TODO | |
+| ING-017 | X Observability & Rate Limits | Log X ingestion events and track metrics | Structured logs for X ingest, metrics tracking | tests/test_observability_and_ingest.py | P1 | TODO | |
 | ING-007 | Async Ingestion Worker | Offload ingestion from request thread | Refresh endpoint enqueues job, returns 202 | queue test (mock) | P2 | TODO | After Graph API |
 | ING-008 | Translation Pipeline (Optional) | (If ENABLE_TRANSLATION) store translated content | metrics.translation fields present | translation toggle test | P3 | DEFERRED | Pending clarity |
 
@@ -136,9 +144,11 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. REV-003 (Edit-in-review workflow).
-2. REV-004 (Audit trail persistence).
-3. ING-007 (Async ingestion worker).
+1. ING-015 (Frontend UI for X posts with platform badge).
+2. ING-016 (X posts in review workflow).
+3. ING-017 (Observability for X ingestion).
+4. REV-003 (Edit-in-Review workflow).
+5. SEC-002 (Role-based access guardrails on review actions).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
@@ -155,7 +165,10 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | 2025-10-05 | Added admin JWT skeleton and ping endpoint | SEC-001 | codex | Unauthorized/authorized tests in suite |
 | 2025-10-06 | Feature-flagged Graph ingest + expanded leader roster | ING-006, ING-009 | codex | pytest (tests/test_facebook_ingestion.py, tests/test_leader_seed.py) + vitest (src/tests/dashboard.test.tsx) |
 | 2025-10-07 | Frontend consumes Graph media/avatar; admin token issuance endpoint; structured error handler | ING-006, SEC-001, OBS-003 | codex | Vitest (`src/components/PostCard.test.tsx`), pytest (`tests/test_auth.py`, `tests/test_observability_and_ingest.py`) |
-| 2025-10-11 | All P1 tasks complete: Role-based access, coverage gate, infinite scroll tests, sentiment visualization, locale toggle, reviewer attribution | SEC-002, CI-002, FE-CORE-002, FE-CORE-001, OBS-005, L10N-003, REV-002 | copilot | 75 total tests (35 backend, 40 frontend), 83% coverage |
+| 2025-10-11 | Implemented Twitter/X API v2 client with rate limiting | ING-010 | copilot | 97% coverage, 14 tests in test_x_client.py |
+| 2025-10-11 | Added X handles to all 11 seeded leaders | ING-011 | copilot | Leveraged existing JSON handles field, 3 tests in test_leader_seed.py |
+| 2025-10-11 | Completed X ingestion pipeline with deduplication | ING-012, ING-013, ING-014 | copilot | Feature-flagged X_INGEST_ENABLED, 6 tests in test_x_ingestion.py, 44 total backend tests passing |
+| 2025-10-07 | Frontend consumes Graph media/avatar; admin token issuance endpoint; structured error handler | ING-006, SEC-001, OBS-003 | codex | Vitest (`src/components/PostCard.test.tsx`), pytest (`tests/test_auth.py`, `tests/test_observability_and_ingest.py`) |
 
 ---
 ## 6. MAINTENANCE RULES
