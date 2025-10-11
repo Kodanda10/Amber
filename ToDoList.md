@@ -117,7 +117,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | CI-001 | TypeScript Strict Pass | --noEmit passes | `npx tsc --noEmit` zero errors | CI step | P0 | DONE | Added to workflow |
-| CI-002 | Backend Coverage Gate | Fail <80% | Pytest exit non-zero below threshold | coverage gate test | P1 | TODO | |
+| CI-002 | Backend Coverage Gate | Fail <80% | Pytest exit non-zero below threshold | coverage gate test | P1 | DONE | Enforced via pyproject.toml and CI workflow |
 | CI-003 | Frontend Unit Test Setup | Add jest/vitest + sample test | `npm test` runs in CI | workflow addition | P1 | DONE | |
 | CI-004 | CodeQL Workflow | CodeQL job visible in Actions | alerts page accessible | workflow test | P2 | TODO | |
 | CI-005 | Lint Blocking Mode | Ruff & ESLint as required checks | PR fails on lint errors | PR status | P1 | TODO | |
@@ -125,16 +125,17 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 ---
 ## 3. CURRENT SNAPSHOT
 - Phase Active: P1 (Observability & Quality)
-- Highest Priority Upcoming: CI-002, FE-CORE-002, OBS-005
-- Test Coverage: Vitest covers PostCard Graph metadata; pytest covers admin token flow + error logging shape + role-based access.
+- Highest Priority Upcoming: FE-CORE-002, OBS-005
+- Test Coverage: Backend at 83% (>80% threshold enforced); Vitest covers PostCard Graph metadata; pytest covers admin token flow + error logging shape + role-based access.
 - Logging: Structured request + ingest success + global error handler emitting JSON payloads.
 - Auth: Role-based access control with reviewer and admin roles protecting review endpoints.
+- CI: Backend coverage gate enforcing >=80% threshold.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. CI-002 (Add backend coverage gate once new suites stabilize).
-2. FE-CORE-002 (Harden infinite scroll with observer test coverage).
-3. OBS-005 (Codify coverage thresholds in reporting pipeline).
+1. FE-CORE-002 (Harden infinite scroll with observer test coverage).
+2. OBS-005 (Codify coverage thresholds in reporting pipeline).
+3. FE-CORE-001 (Post sentiment visualization).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)

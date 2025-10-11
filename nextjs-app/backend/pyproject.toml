@@ -1,0 +1,46 @@
+[tool.pytest.ini_options]
+# CI-002: Backend Coverage Gate
+# Enforce minimum coverage thresholds
+minversion = "6.0"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = """
+    --strict-markers
+    --disable-warnings
+    -ra
+"""
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+# CI-002: Fail if coverage drops below 80%
+fail_under = 80
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.coverage.json]
+output = "coverage.json"
+
+[tool.coverage.xml]
+output = "coverage.xml"
