@@ -18,6 +18,7 @@ from werkzeug.exceptions import HTTPException
 from news_sources import fetch_articles
 from sentiment import classify_sentiment
 import facebook_client
+import x_client
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 import logging
 
@@ -25,6 +26,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///amber.db")
 POST_LIMIT = int(os.getenv("NEWS_POST_LIMIT", "6"))
 FACEBOOK_GRAPH_ENABLED = os.getenv("FACEBOOK_GRAPH_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
 FACEBOOK_GRAPH_LIMIT = int(os.getenv("FACEBOOK_GRAPH_LIMIT", "10"))
+X_INGEST_ENABLED = os.getenv("X_INGEST_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+X_INGEST_LIMIT = int(os.getenv("X_INGEST_LIMIT", "10"))
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "amber-dev-secret")
 ADMIN_JWT_TTL = int(os.getenv("ADMIN_JWT_TTL", "3600"))
 ADMIN_BOOTSTRAP_SECRET = os.getenv("ADMIN_BOOTSTRAP_SECRET", ADMIN_JWT_SECRET)
@@ -547,6 +550,91 @@ def _verify_admin_token(token: str) -> Optional[Dict]:
     if not isinstance(payload, dict) or "admin" not in payload:
         return None
     return payload
+
+
+def ingest_x_posts(leader_id: str) -> List[Dict]:
+    """
+    Ingest posts from Twitter/X for a specific leader (ING-012).
+    
+    Args:
+        leader_id: Leader ID to fetch X posts for
+    
+    Returns:
+        List of ingested post dictionaries
+    """
+    leader = db.session.get(Leader, leader_id)
+    if not leader:
+        return []
+    
+    # Check if leader has X handle
+    x_handle = leader.handles.get("x") if leader.handles else None
+    if not x_handle:
+        return []
+    
+    # Get existing posts to check for duplicates
+    existing_posts = Post.query.filter_by(leader_id=leader.id).all()
+    by_external_id: Dict[str, Post] = {}
+    for post in existing_posts:
+        metrics = post.metrics or {}
+        external_id = metrics.get("externalId") if isinstance(metrics, dict) else None
+        if external_id:
+            by_external_id[external_id] = post
+    
+    try:
+        # Create X API client and fetch timeline
+        client = x_client.create_client()
+        result = client.fetch_user_timeline(x_handle, max_results=X_INGEST_LIMIT)
+        
+        upserted_posts: List[Post] = []
+        
+        for x_post in result.get("posts", []):
+            external_id = x_post["id"]
+            
+            # Skip if already exists (deduplication)
+            if external_id in by_external_id:
+                continue
+            
+            # Parse timestamp
+            timestamp = datetime.fromisoformat(x_post["created_at"].replace("Z", "+00:00"))
+            
+            # Get first media URL if available
+            media_urls = x_post.get("media_urls", [])
+            media_url = media_urls[0] if media_urls else None
+            
+            # Classify sentiment
+            sentiment_label = classify_sentiment(x_post["text"])
+            
+            # Create post
+            post = Post(
+                id=str(uuid.uuid4()),
+                leader_id=leader.id,
+                platform="X",
+                content=x_post["text"],
+                timestamp=timestamp,
+                sentiment=sentiment_label,
+                metrics={
+                    "origin": "x",
+                    "externalId": external_id,
+                    "avatarUrl": x_post.get("avatar"),
+                    "mediaUrl": media_url,
+                    "author": x_post.get("author"),
+                    "source": "Twitter/X",
+                    "language": "en"  # TODO: Add language detection
+                }
+            )
+            
+            db.session.add(post)
+            upserted_posts.append(post)
+        
+        # Commit all posts
+        if upserted_posts:
+            db.session.commit()
+        
+        return [post.to_dict() for post in upserted_posts]
+        
+    except Exception as exc:
+        app.logger.warning("x_ingest_failed leader=%s error=%s", leader.name, exc)
+        return []
 
 
 def seed_data() -> None:
