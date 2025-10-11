@@ -136,6 +136,7 @@ class ReviewItem(db.Model):
     state = db.Column(db.String, nullable=False, default="pending")
     notes = db.Column(db.Text, nullable=True)
     reviewer = db.Column(db.String, nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)  # REV-002: Track when reviewed
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     post = db.relationship("Post")
@@ -146,7 +147,8 @@ class ReviewItem(db.Model):
             "postId": self.post_id,
             "state": self.state,
             "notes": self.notes,
-            "reviewer": self.reviewer,
+            "reviewedBy": self.reviewer,  # REV-002: Return as reviewedBy for API
+            "reviewedAt": self.reviewed_at.isoformat() if self.reviewed_at else None,  # REV-002
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
             "post": self.post.to_dict() if self.post else None,
         }
@@ -973,13 +975,17 @@ def list_review_items():
     return jsonify(items)
 
 
-def _update_review_state(review_id: str, state: str, notes: Optional[str] = None) -> Optional[ReviewItem]:
+def _update_review_state(review_id: str, state: str, notes: Optional[str] = None, reviewer: Optional[str] = None) -> Optional[ReviewItem]:
     item = db.session.get(ReviewItem, review_id)
     if not item:
         return None
     item.state = state
     if notes is not None:
         item.notes = notes
+    # REV-002: Capture reviewer identity and timestamp
+    if reviewer is not None:
+        item.reviewer = reviewer
+        item.reviewed_at = datetime.utcnow()
     db.session.commit()
     return item
 
@@ -987,7 +993,9 @@ def _update_review_state(review_id: str, state: str, notes: Optional[str] = None
 @app.route("/api/review/<review_id>/approve", methods=["POST"])
 @require_auth(allowed_roles=["admin", "reviewer"])
 def approve_review(review_id: str):
-    item = _update_review_state(review_id, "approved")
+    # REV-002: Extract reviewer identity from auth payload
+    reviewer_id = g.auth_payload.get("admin") if hasattr(g, "auth_payload") else None
+    item = _update_review_state(review_id, "approved", reviewer=reviewer_id)
     if not item:
         return jsonify({"error": "Review item not found"}), 404
     return jsonify(item.to_dict())
@@ -997,7 +1005,9 @@ def approve_review(review_id: str):
 @require_auth(allowed_roles=["admin", "reviewer"])
 def reject_review(review_id: str):
     payload = request.get_json(silent=True) or {}
-    item = _update_review_state(review_id, "rejected", payload.get("notes"))
+    # REV-002: Extract reviewer identity from auth payload
+    reviewer_id = g.auth_payload.get("admin") if hasattr(g, "auth_payload") else None
+    item = _update_review_state(review_id, "rejected", payload.get("notes"), reviewer=reviewer_id)
     if not item:
         return jsonify({"error": "Review item not found"}), 404
     return jsonify(item.to_dict())

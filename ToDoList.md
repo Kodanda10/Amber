@@ -56,7 +56,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | REV-001 | Basic Review Queue | Approve/Reject workflow implemented | API approve/reject updates state | test_review_workflow | P0 | DONE | Implemented |
-| REV-002 | Reviewer Attribution | Capture reviewer identity | Response includes reviewer + timestamp | add reviewer test | P1 | TODO | Needs auth integration |
+| REV-002 | Reviewer Attribution | Capture reviewer identity | Response includes reviewer + timestamp | add reviewer test | P1 | DONE | Tracks reviewedBy and reviewedAt on approve/reject |
 | REV-003 | Edit-in-Review | Inline edit + approve | PATCH updates content & marks approved | new edit test | P2 | TODO | |
 | REV-004 | Audit Trail | Persist action history | history entries persisted per review item | audit model test | P2 | TODO | |
 
@@ -125,19 +125,20 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 ---
 ## 3. CURRENT SNAPSHOT
 - Phase Active: P1 (Observability & Quality) + P2 Enhancements
-- Highest Priority Upcoming: REV-002, REV-003, REV-004
-- Test Coverage: Backend at 83% (>80% threshold enforced); Frontend 40 tests passing; Comprehensive test coverage across all features.
+- Highest Priority Upcoming: REV-003, REV-004
+- Test Coverage: Backend at 35 tests (83% coverage, >80% threshold enforced); Frontend 40 tests passing; Comprehensive test coverage across all features.
 - Logging: Structured request + ingest success + global error handler emitting JSON payloads.
 - Auth: Role-based access control with reviewer and admin roles protecting review endpoints.
 - CI: Backend coverage gate enforcing >=80% threshold.
 - UI: Sentiment intensity visualization with color-coded bars; locale toggle with persistence.
 - L10N: English/Hindi toggle with localStorage persistence.
+- Review: Reviewer attribution tracking on all approve/reject actions.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. REV-002 (Reviewer attribution on approve/reject).
-2. REV-003 (Edit-in-review workflow).
-3. REV-004 (Audit trail persistence).
+1. REV-003 (Edit-in-review workflow).
+2. REV-004 (Audit trail persistence).
+3. ING-007 (Async ingestion worker).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
