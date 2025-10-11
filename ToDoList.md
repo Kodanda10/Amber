@@ -155,6 +155,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | 2025-10-05 | Added admin JWT skeleton and ping endpoint | SEC-001 | codex | Unauthorized/authorized tests in suite |
 | 2025-10-06 | Feature-flagged Graph ingest + expanded leader roster | ING-006, ING-009 | codex | pytest (tests/test_facebook_ingestion.py, tests/test_leader_seed.py) + vitest (src/tests/dashboard.test.tsx) |
 | 2025-10-07 | Frontend consumes Graph media/avatar; admin token issuance endpoint; structured error handler | ING-006, SEC-001, OBS-003 | codex | Vitest (`src/components/PostCard.test.tsx`), pytest (`tests/test_auth.py`, `tests/test_observability_and_ingest.py`) |
+| 2025-10-11 | All P1 tasks complete: Role-based access, coverage gate, infinite scroll tests, sentiment visualization, locale toggle, reviewer attribution | SEC-002, CI-002, FE-CORE-002, FE-CORE-001, OBS-005, L10N-003, REV-002 | copilot | 75 total tests (35 backend, 40 frontend), 83% coverage |
 
 ---
 ## 6. MAINTENANCE RULES
