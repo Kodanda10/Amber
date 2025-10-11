@@ -7,6 +7,7 @@ import hashlib
 import json
 import time
 from datetime import datetime, timezone
+from functools import wraps
 from typing import Dict, List, Optional, Tuple
 
 from flask import Flask, jsonify, request, g
@@ -35,6 +36,44 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+
+def require_auth(allowed_roles: Optional[List[str]] = None):
+    """
+    Decorator to require authentication and optionally check roles.
+    
+    Args:
+        allowed_roles: List of allowed roles (e.g., ["admin", "reviewer"]). 
+                      If None, any authenticated user is allowed.
+    
+    Returns:
+        The decorated function or an error response.
+    """
+    if allowed_roles is None:
+        allowed_roles = ["admin", "reviewer"]
+    
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return jsonify({"error": "unauthorized", "details": "Missing or invalid Authorization header"}), 401
+            
+            token = auth_header.split(" ", 1)[1].strip()
+            payload = _verify_admin_token(token)
+            if not payload:
+                return jsonify({"error": "unauthorized", "details": "Invalid or expired token"}), 401
+            
+            # Check role if specific roles are required
+            user_role = payload.get("role", "admin")
+            if allowed_roles and user_role not in allowed_roles:
+                return jsonify({"error": "forbidden", "details": f"Role '{user_role}' not authorized for this action"}), 403
+            
+            # Store payload in flask g for access in the view
+            g.auth_payload = payload
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 class Leader(db.Model):
@@ -95,6 +134,7 @@ class ReviewItem(db.Model):
     state = db.Column(db.String, nullable=False, default="pending")
     notes = db.Column(db.Text, nullable=True)
     reviewer = db.Column(db.String, nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)  # REV-002: Track when reviewed
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     post = db.relationship("Post")
@@ -105,7 +145,8 @@ class ReviewItem(db.Model):
             "postId": self.post_id,
             "state": self.state,
             "notes": self.notes,
-            "reviewer": self.reviewer,
+            "reviewedBy": self.reviewer,  # REV-002: Return as reviewedBy for API
+            "reviewedAt": self.reviewed_at.isoformat() if self.reviewed_at else None,  # REV-002
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
             "post": self.post.to_dict() if self.post else None,
         }
@@ -534,8 +575,8 @@ def _admin_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(ADMIN_JWT_SECRET, salt="amber-admin-token")
 
 
-def generate_admin_token(admin_id: str) -> str:
-    return _admin_serializer().dumps({"admin": admin_id})
+def generate_admin_token(admin_id: str, role: str = "admin") -> str:
+    return _admin_serializer().dumps({"admin": admin_id, "role": role})
 
 
 def _verify_admin_token(token: str) -> Optional[Dict]:
@@ -546,6 +587,9 @@ def _verify_admin_token(token: str) -> Optional[Dict]:
         return None
     if not isinstance(payload, dict) or "admin" not in payload:
         return None
+    # Ensure role is present, default to "admin" for backward compatibility
+    if "role" not in payload:
+        payload["role"] = "admin"
     return payload
 
 
@@ -929,29 +973,39 @@ def list_review_items():
     return jsonify(items)
 
 
-def _update_review_state(review_id: str, state: str, notes: Optional[str] = None) -> Optional[ReviewItem]:
+def _update_review_state(review_id: str, state: str, notes: Optional[str] = None, reviewer: Optional[str] = None) -> Optional[ReviewItem]:
     item = db.session.get(ReviewItem, review_id)
     if not item:
         return None
     item.state = state
     if notes is not None:
         item.notes = notes
+    # REV-002: Capture reviewer identity and timestamp
+    if reviewer is not None:
+        item.reviewer = reviewer
+        item.reviewed_at = datetime.utcnow()
     db.session.commit()
     return item
 
 
 @app.route("/api/review/<review_id>/approve", methods=["POST"])
+@require_auth(allowed_roles=["admin", "reviewer"])
 def approve_review(review_id: str):
-    item = _update_review_state(review_id, "approved")
+    # REV-002: Extract reviewer identity from auth payload
+    reviewer_id = g.auth_payload.get("admin") if hasattr(g, "auth_payload") else None
+    item = _update_review_state(review_id, "approved", reviewer=reviewer_id)
     if not item:
         return jsonify({"error": "Review item not found"}), 404
     return jsonify(item.to_dict())
 
 
 @app.route("/api/review/<review_id>/reject", methods=["POST"])
+@require_auth(allowed_roles=["admin", "reviewer"])
 def reject_review(review_id: str):
     payload = request.get_json(silent=True) or {}
-    item = _update_review_state(review_id, "rejected", payload.get("notes"))
+    # REV-002: Extract reviewer identity from auth payload
+    reviewer_id = g.auth_payload.get("admin") if hasattr(g, "auth_payload") else None
+    item = _update_review_state(review_id, "rejected", payload.get("notes"), reviewer=reviewer_id)
     if not item:
         return jsonify({"error": "Review item not found"}), 404
     return jsonify(item.to_dict())
