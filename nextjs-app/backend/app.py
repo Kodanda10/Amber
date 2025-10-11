@@ -698,7 +698,7 @@ def seed_data() -> None:
     leaders_payload = [
         {
             "name": "Vishnu Deo Sai",
-            "handles": {"facebook": "@vishnudeosai1"},
+            "handles": {"facebook": "@vishnudeosai1", "twitter": "@vishnudeosai"},
             "tracking_topics": ["tribal welfare", "state development", "governance"],
         },
         {

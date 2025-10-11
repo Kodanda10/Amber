@@ -6,7 +6,7 @@ export const INITIAL_LEADERS: Leader[] = [
   {
     id: 'leader-1',
     name: 'Vishnu Deo Sai',
-    handles: { facebook: '@vishnudeosai1' },
+    handles: { facebook: '@vishnudeosai1', twitter: '@vishnudeosai' },
     trackingTopics: ['tribal welfare', 'state development', 'governance'],
   },
   {
