@@ -49,12 +49,6 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ING-005 | Add Hindi Locale Support | hl/gl/ceid configurable + UI indicator | API returns language meta + UI badge per post | new i18n test + component snapshot | P1 | DONE | Language badge + Hindi formatter wired into PostCard |
 | ING-006 | Facebook Graph API Ingestion (Phase 1) | Fetch posts via Graph API for leaders w/ handles | For a test leader, >=1 post stored with origin=graph; avatar + media persisted | tests/test_facebook_ingestion.py | P1 | DONE | Feature-flagged graph ingest with media/avatar + news/sample fallback |
 | ING-009 | Expand Leader Catalog & Dashboard Controls | Seed 11 leaders and expose roster with delete action on dashboard | Seeded handles list matches brief; dashboard roster lists leaders with remove control | tests/test_leader_seed.py + src/tests/dashboard.test.tsx + src/components/Dashboard.test.tsx | P1 | DONE | Sample fallback retained; roster reuses API delete flow |
-| ING-010 | X API Client & Configuration | Implement Twitter API v2 client with bearer token auth | Client fetches user timeline, handles rate limits, returns normalized data | tests/test_x_client.py | P1 | DONE | 97% coverage, 14 tests passing |
-| ING-011 | Leader X Handle Schema Update | Add X handles to all seeded leaders | All leaders have x handle in handles dict; API returns x handles | tests/test_leader_seed.py | P1 | DONE | Using existing JSON handles field |
-| ING-012 | X Ingestion Service Integration | Integrate X API with ingestion pipeline | ingest_x_posts() creates posts with origin=x, deduplicates by externalId | tests/test_x_ingestion.py | P1 | DONE | Feature-flagged X_INGEST_ENABLED, 6 tests passing |
-| ING-013 | X Sentiment & Metrics Harmonization | Apply sentiment analysis to X posts | X posts have sentiment scores and platform metadata | tests/test_x_ingestion.py | P1 | DONE | Integrated with ING-012 |
-| ING-014 | X Media & Avatar URL Persistence | Store media/avatar URLs in metrics | X posts persist mediaUrl and avatarUrl in metrics | tests/test_x_ingestion.py | P1 | DONE | Integrated with ING-012 |
-| ING-015 | Frontend UI Integration for X/Twitter Posts | Display X posts in dashboard with 𝕏 platform badge | Twitter posts ingested and displayed with proper X icon; API token configured | tests/test_twitter_ingestion.py + src/tests/twitter_badge.test.tsx | P0 | DONE | Twitter API v2 client created; ingestion prioritizes Twitter over Facebook; proper 𝕏 badge display |
 | ING-007 | Async Ingestion Worker | Offload ingestion from request thread | Refresh endpoint enqueues job, returns 202 | queue test (mock) | P2 | TODO | After Graph API |
 | ING-008 | Translation Pipeline (Optional) | (If ENABLE_TRANSLATION) store translated content | metrics.translation fields present | translation toggle test | P3 | DEFERRED | Pending clarity |
 
@@ -62,7 +56,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | REV-001 | Basic Review Queue | Approve/Reject workflow implemented | API approve/reject updates state | test_review_workflow | P0 | DONE | Implemented |
-| REV-002 | Reviewer Attribution | Capture reviewer identity | Response includes reviewer + timestamp | add reviewer test | P1 | DONE | Tracks reviewedBy and reviewedAt on approve/reject |
+| REV-002 | Reviewer Attribution | Capture reviewer identity | Response includes reviewer + timestamp | add reviewer test | P1 | TODO | Needs auth integration |
 | REV-003 | Edit-in-Review | Inline edit + approve | PATCH updates content & marks approved | new edit test | P2 | TODO | |
 | REV-004 | Audit Trail | Persist action history | history entries persisted per review item | audit model test | P2 | TODO | |
 
@@ -73,7 +67,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | OBS-002 | Ingest Success Event | Emit structured ingest_success | log has leader, articles, durationMs | test_ingest_success_log_emitted | P0 | DONE | |
 | OBS-003 | Add Error Event Shape | All exceptions -> error log w/ stack | failing route simulation logs error | error log test | P1 | DONE | Structured handler emits JSON error + pytest coverage |
 | OBS-004 | Metrics Endpoint | Exposes ingest + uptime | /api/metrics returns expected keys | test_metrics_endpoint | P0 | DONE | |
-| OBS-005 | Coverage Threshold | Enforce >=80% lines backend | pytest fails if <80% | CI run failing below threshold | P1 | DONE | Implemented via pyproject.toml, same as CI-002 |
+| OBS-005 | Coverage Threshold | Enforce >=80% lines backend | pytest fails if <80% | CI run failing below threshold | P1 | TODO | Set once stable |
 | OBS-006 | CodeQL Integration | Security static analysis | workflow passes & alerts show in GH | workflow file | P2 | TODO | |
 
 ### 2.4 Localization & UI
@@ -81,20 +75,20 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | L10N-001 | Hindi Date Formatting | Show dates in Hindi locale style | Example post displays Hindi month/Devanagari numerals | util unit test | P1 | DONE | |
 | L10N-002 | Language Badge | Post card shows language chip | Badge rendered for multiple languages | component test | P1 | DONE | Dashboard + PostCard tests cover Hindi + English |
-| L10N-003 | Toggle Locale Preference | User toggle hi/en | Setting persisted & reflected | preference test | P2 | DONE | LocaleToggle component with localStorage persistence |
+| L10N-003 | Toggle Locale Preference | User toggle hi/en | Setting persisted & reflected | preference test | P2 | TODO | |
 
 ### 2.5 Frontend Components & Data UX
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
-| FE-CORE-001 | Post Sentiment Visualization | Show sentiment score intensity | UI gradient or bar reflects score | DOM test | P1 | DONE | SentimentBar component with 10 tests |
-| FE-CORE-002 | Infinite Scroll (Stable) | Already implemented; stabilize w/ tests | IntersectionObserver mocked & loads more | observer test | P1 | DONE | 9 tests covering observer lifecycle |
+| FE-CORE-001 | Post Sentiment Visualization | Show sentiment score intensity | UI gradient or bar reflects score | DOM test | P1 | TODO | |
+| FE-CORE-002 | Infinite Scroll (Stable) | Already implemented; stabilize w/ tests | IntersectionObserver mocked & loads more | observer test | P1 | TODO | Add test |
 | FE-CORE-003 | Error Boundary | Catch render errors gracefully | Throwing child replaced by fallback | boundary test | P2 | TODO | |
 
 ### 2.6 Security & Auth
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | SEC-001 | Basic Auth Layer | JWT issuance + protected endpoints | Unauthorized returns 401; valid token passes | auth test | P1 | DONE | Tokenized /api/admin/ping with serializer |
-| SEC-002 | Role-Based Access | reviewer vs admin | Role restrictions enforced on review actions | role test | P1 | DONE | Implemented with @require_auth decorator |
+| SEC-002 | Role-Based Access | reviewer vs admin | Role restrictions enforced on review actions | role test | P1 | TODO | |
 | SEC-003 | Rate Limiting | Per-IP limit on refresh endpoints | Exceed limit returns 429 | rate limit test | P2 | TODO | |
 | SEC-004 | Secrets Scan (CI) | Already added (Gitleaks) | CI artifact shows run | present in workflow | P1 | DONE | Non-blocking for now |
 
@@ -123,30 +117,24 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
 | CI-001 | TypeScript Strict Pass | --noEmit passes | `npx tsc --noEmit` zero errors | CI step | P0 | DONE | Added to workflow |
-| CI-002 | Backend Coverage Gate | Fail <80% | Pytest exit non-zero below threshold | coverage gate test | P1 | DONE | Enforced via pyproject.toml and CI workflow |
+| CI-002 | Backend Coverage Gate | Fail <80% | Pytest exit non-zero below threshold | coverage gate test | P1 | TODO | |
 | CI-003 | Frontend Unit Test Setup | Add jest/vitest + sample test | `npm test` runs in CI | workflow addition | P1 | DONE | |
 | CI-004 | CodeQL Workflow | CodeQL job visible in Actions | alerts page accessible | workflow test | P2 | TODO | |
 | CI-005 | Lint Blocking Mode | Ruff & ESLint as required checks | PR fails on lint errors | PR status | P1 | TODO | |
 
 ---
 ## 3. CURRENT SNAPSHOT
-- Phase Active: P1 (Observability & Quality) + P2 Enhancements
-- Highest Priority Upcoming: REV-003, REV-004
-- Test Coverage: Backend at 35 tests (83% coverage, >80% threshold enforced); Frontend 40 tests passing; Comprehensive test coverage across all features.
+- Phase Active: P1 (Observability & Quality)
+- Highest Priority Upcoming: SEC-002, CI-002, FE-CORE-002
+- Test Coverage: Vitest covers PostCard Graph metadata; pytest covers admin token flow + error logging shape.
 - Logging: Structured request + ingest success + global error handler emitting JSON payloads.
-- Auth: Role-based access control with reviewer and admin roles protecting review endpoints.
-- CI: Backend coverage gate enforcing >=80% threshold.
-- UI: Sentiment intensity visualization with color-coded bars; locale toggle with persistence.
-- L10N: English/Hindi toggle with localStorage persistence.
-- Review: Reviewer attribution tracking on all approve/reject actions.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. ING-015 (Frontend UI for X posts with platform badge).
-2. ING-016 (X posts in review workflow).
-3. ING-017 (Observability for X ingestion).
-4. REV-003 (Edit-in-Review workflow).
-5. SEC-002 (Role-based access guardrails on review actions).
+1. SEC-002 (Role-based access guardrails on review actions).
+2. CI-002 (Add backend coverage gate once new suites stabilize).
+3. FE-CORE-002 (Harden infinite scroll with observer test coverage).
+4. OBS-005 (Codify coverage thresholds in reporting pipeline).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
@@ -163,11 +151,6 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | 2025-10-05 | Added admin JWT skeleton and ping endpoint | SEC-001 | codex | Unauthorized/authorized tests in suite |
 | 2025-10-06 | Feature-flagged Graph ingest + expanded leader roster | ING-006, ING-009 | codex | pytest (tests/test_facebook_ingestion.py, tests/test_leader_seed.py) + vitest (src/tests/dashboard.test.tsx) |
 | 2025-10-07 | Frontend consumes Graph media/avatar; admin token issuance endpoint; structured error handler | ING-006, SEC-001, OBS-003 | codex | Vitest (`src/components/PostCard.test.tsx`), pytest (`tests/test_auth.py`, `tests/test_observability_and_ingest.py`) |
-| 2025-10-11 | Implemented Twitter/X API v2 client with rate limiting | ING-010 | copilot | 97% coverage, 14 tests in test_x_client.py |
-| 2025-10-11 | Added X handles to all 11 seeded leaders | ING-011 | copilot | Leveraged existing JSON handles field, 3 tests in test_leader_seed.py |
-| 2025-10-11 | Completed X ingestion pipeline with deduplication | ING-012, ING-013, ING-014 | copilot | Feature-flagged X_INGEST_ENABLED, 6 tests in test_x_ingestion.py, 44 total backend tests passing |
-| 2025-10-07 | Frontend consumes Graph media/avatar; admin token issuance endpoint; structured error handler | ING-006, SEC-001, OBS-003 | codex | Vitest (`src/components/PostCard.test.tsx`), pytest (`tests/test_auth.py`, `tests/test_observability_and_ingest.py`) |
-| 2025-10-11 | Twitter/X API integration with 𝕏 badge display (ING-015) | ING-015 | copilot | pytest (tests/test_twitter_ingestion.py: 4 tests), vitest (src/tests/twitter_badge.test.tsx: 6 tests); Twitter ingestion prioritizes over Facebook; proper X logo in PostCard |
 
 ---
 ## 6. MAINTENANCE RULES
