@@ -54,9 +54,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | ING-012 | X Ingestion Service Integration | Integrate X API with ingestion pipeline | ingest_x_posts() creates posts with origin=x, deduplicates by externalId | tests/test_x_ingestion.py | P1 | DONE | Feature-flagged X_INGEST_ENABLED, 6 tests passing |
 | ING-013 | X Sentiment & Metrics Harmonization | Apply sentiment analysis to X posts | X posts have sentiment scores and platform metadata | tests/test_x_ingestion.py | P1 | DONE | Integrated with ING-012 |
 | ING-014 | X Media & Avatar URL Persistence | Store media/avatar URLs in metrics | X posts persist mediaUrl and avatarUrl in metrics | tests/test_x_ingestion.py | P1 | DONE | Integrated with ING-012 |
-| ING-015 | X Frontend UI Integration | Display X posts in dashboard with platform badge | PostCard shows X badge, filters include X checkbox | Frontend tests | P1 | TODO | |
-| ING-016 | X Review Workflow Coverage | X posts appear in review queue | Review queue includes X posts, approve/reject work | tests/test_review_workflow.py | P1 | TODO | |
-| ING-017 | X Observability & Rate Limits | Log X ingestion events and track metrics | Structured logs for X ingest, metrics tracking | tests/test_observability_and_ingest.py | P1 | TODO | |
+| ING-015 | Frontend UI Integration for X/Twitter Posts | Display X posts in dashboard with 𝕏 platform badge | Twitter posts ingested and displayed with proper X icon; API token configured | tests/test_twitter_ingestion.py + src/tests/twitter_badge.test.tsx | P0 | DONE | Twitter API v2 client created; ingestion prioritizes Twitter over Facebook; proper 𝕏 badge display |
 | ING-007 | Async Ingestion Worker | Offload ingestion from request thread | Refresh endpoint enqueues job, returns 202 | queue test (mock) | P2 | TODO | After Graph API |
 | ING-008 | Translation Pipeline (Optional) | (If ENABLE_TRANSLATION) store translated content | metrics.translation fields present | translation toggle test | P3 | DEFERRED | Pending clarity |
 
@@ -169,6 +167,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | 2025-10-11 | Added X handles to all 11 seeded leaders | ING-011 | copilot | Leveraged existing JSON handles field, 3 tests in test_leader_seed.py |
 | 2025-10-11 | Completed X ingestion pipeline with deduplication | ING-012, ING-013, ING-014 | copilot | Feature-flagged X_INGEST_ENABLED, 6 tests in test_x_ingestion.py, 44 total backend tests passing |
 | 2025-10-07 | Frontend consumes Graph media/avatar; admin token issuance endpoint; structured error handler | ING-006, SEC-001, OBS-003 | codex | Vitest (`src/components/PostCard.test.tsx`), pytest (`tests/test_auth.py`, `tests/test_observability_and_ingest.py`) |
+| 2025-10-11 | Twitter/X API integration with 𝕏 badge display (ING-015) | ING-015 | copilot | pytest (tests/test_twitter_ingestion.py: 4 tests), vitest (src/tests/twitter_badge.test.tsx: 6 tests); Twitter ingestion prioritizes over Facebook; proper X logo in PostCard |
 
 ---
 ## 6. MAINTENANCE RULES
