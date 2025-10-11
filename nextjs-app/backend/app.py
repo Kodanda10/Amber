@@ -18,6 +18,7 @@ from werkzeug.exceptions import HTTPException
 from news_sources import fetch_articles
 from sentiment import classify_sentiment
 import facebook_client
+import twitter_client
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 import logging
 
@@ -25,6 +26,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///amber.db")
 POST_LIMIT = int(os.getenv("NEWS_POST_LIMIT", "6"))
 FACEBOOK_GRAPH_ENABLED = os.getenv("FACEBOOK_GRAPH_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
 FACEBOOK_GRAPH_LIMIT = int(os.getenv("FACEBOOK_GRAPH_LIMIT", "10"))
+TWITTER_ENABLED = os.getenv("TWITTER_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
+TWITTER_LIMIT = int(os.getenv("TWITTER_LIMIT", "10"))
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "amber-dev-secret")
 ADMIN_JWT_TTL = int(os.getenv("ADMIN_JWT_TTL", "3600"))
 ADMIN_BOOTSTRAP_SECRET = os.getenv("ADMIN_BOOTSTRAP_SECRET", ADMIN_JWT_SECRET)
@@ -223,23 +226,44 @@ def _sync_posts_for_leader(leader: Leader) -> Tuple[List[Dict], str]:
     upserted_posts: List[Post] = []
     origin = "news"
 
-    graph_handle = leader.handles.get("facebook") if leader.handles else None
-    if FACEBOOK_GRAPH_ENABLED and graph_handle:
+    # Try Twitter/X ingestion first (ING-015 priority)
+    twitter_handle = leader.handles.get("twitter") if leader.handles else None
+    if TWITTER_ENABLED and twitter_handle:
         try:
-            graph_records = facebook_client.fetch_posts(graph_handle, FACEBOOK_GRAPH_LIMIT)
+            twitter_records = twitter_client.fetch_posts(twitter_handle, TWITTER_LIMIT)
         except Exception as exc:  # noqa: BLE001 - log but continue with fallback
-            app.logger.warning("graph_fetch_failed leader=%s error=%s", leader.name, exc)
+            app.logger.warning("twitter_fetch_failed leader=%s error=%s", leader.name, exc)
         else:
-            if graph_records:
-                upserted_posts = _upsert_graph_posts(
+            if twitter_records:
+                upserted_posts = _upsert_twitter_posts(
                     leader,
-                    graph_records,
+                    twitter_records,
                     by_link,
                     by_platform_id,
                     existing_posts,
                     avatar_url,
                 )
-                origin = "graph"
+                origin = "twitter"
+
+    # Try Facebook Graph if no Twitter posts
+    if not upserted_posts:
+        graph_handle = leader.handles.get("facebook") if leader.handles else None
+        if FACEBOOK_GRAPH_ENABLED and graph_handle:
+            try:
+                graph_records = facebook_client.fetch_posts(graph_handle, FACEBOOK_GRAPH_LIMIT)
+            except Exception as exc:  # noqa: BLE001 - log but continue with fallback
+                app.logger.warning("graph_fetch_failed leader=%s error=%s", leader.name, exc)
+            else:
+                if graph_records:
+                    upserted_posts = _upsert_graph_posts(
+                        leader,
+                        graph_records,
+                        by_link,
+                        by_platform_id,
+                        existing_posts,
+                        avatar_url,
+                    )
+                    origin = "graph"
 
     if not upserted_posts:
         try:
@@ -454,6 +478,124 @@ def _upsert_graph_posts(
                 leader_id=leader.id,
                 platform="Facebook",
                 content=message or "",
+                timestamp=timestamp,
+                sentiment=sentiment,
+                metrics=metrics_new,
+                verification_status="Needs Review",
+            )
+            post.leader = leader
+            db.session.add(post)
+            db.session.flush()
+            existing_posts.append(post)
+            if platform_post_id:
+                by_platform_id[platform_post_id] = post
+            if permalink:
+                by_link[permalink] = post
+
+        upserted.append(post)
+
+    return upserted
+
+
+def _upsert_twitter_posts(
+    leader: Leader,
+    twitter_records: List[Dict],
+    by_link: Dict[str, Post],
+    by_platform_id: Dict[str, Post],
+    existing_posts: List[Post],
+    avatar_url: Optional[str],
+) -> List[Post]:
+    now = datetime.utcnow()
+    upserted: List[Post] = []
+
+    for record in twitter_records:
+        platform_post_id = record.get("id")
+        text = record.get("text") or ""
+        timestamp = _to_naive_datetime(record.get("created_at"))
+        sentiment, score = classify_sentiment(text, return_score=True)
+        
+        # Extract media URL if present
+        media_url = None
+        if "media" in record and record["media"]:
+            media_item = record["media"][0]
+            media_url = media_item.get("url") or media_item.get("preview_image_url")
+        
+        # Get author info
+        author = record.get("author", {})
+        author_avatar = author.get("profile_image_url") or avatar_url
+        
+        # Get public metrics
+        public_metrics = record.get("public_metrics", {})
+        likes = public_metrics.get("like_count", 0)
+        retweets = public_metrics.get("retweet_count", 0)
+        replies = public_metrics.get("reply_count", 0)
+        
+        # Construct tweet URL
+        username = author.get("username", "")
+        permalink = f"https://twitter.com/{username}/status/{platform_post_id}" if username and platform_post_id else None
+        
+        article_hash = _hash_article({
+            "url": permalink or platform_post_id or "",
+            "title": text,
+            "summary": text,
+        })
+
+        metrics_base = {
+            "likes": likes,
+            "comments": replies,
+            "shares": retweets,
+            "origin": "twitter",
+            "link": permalink,
+            "avatarUrl": author_avatar,
+            "mediaUrl": media_url,
+            "platformPostId": platform_post_id,
+            "language": "unknown",
+            "hash": article_hash,
+        }
+
+        post: Optional[Post] = None
+        if platform_post_id and platform_post_id in by_platform_id:
+            post = by_platform_id[platform_post_id]
+        elif permalink and permalink in by_link:
+            post = by_link[permalink]
+
+        if post:
+            if timestamp > post.timestamp:
+                post.timestamp = timestamp
+            post.content = text or post.content
+            post.sentiment = sentiment
+            post.platform = "Twitter"
+            existing_metrics = post.metrics or {}
+            first_seen = existing_metrics.get("firstSeenAt") or existing_metrics.get("first_seen_at")
+            merged = {**metrics_base, **existing_metrics}
+            if not first_seen:
+                first_seen = post.created_at.isoformat() if post.created_at else now.isoformat()
+            merged["firstSeenAt"] = first_seen
+            merged["lastSeenAt"] = now.isoformat()
+            merged["sentimentScore"] = score
+            old_hash = existing_metrics.get("hash")
+            revision = existing_metrics.get("revision", 1)
+            if old_hash and old_hash != article_hash:
+                revision += 1
+            merged["revision"] = revision
+            post.metrics = merged
+            if platform_post_id:
+                by_platform_id[platform_post_id] = post
+            if permalink:
+                by_link[permalink] = post
+        else:
+            metrics_new = {
+                **metrics_base,
+                "firstSeenAt": now.isoformat(),
+                "lastSeenAt": now.isoformat(),
+                "revision": 1,
+                "sentimentScore": score,
+            }
+            post = Post(
+                id=str(uuid.uuid4()),
+                leader_id=leader.id,
+                platform="Twitter",
+                content=text or "",
                 timestamp=timestamp,
                 sentiment=sentiment,
                 metrics=metrics_new,

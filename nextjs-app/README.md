@@ -45,6 +45,22 @@ export FACEBOOK_GRAPH_TOKEN=<meta_app_token>
 export FACEBOOK_GRAPH_LIMIT=5   # optional override
 ```
 
+To ingest live Twitter/X posts enable the Twitter feature flag and provide a bearer token (ING-015):
+
+```bash
+export TWITTER_ENABLED=1
+export TWITTER_BEARER_TOKEN=<twitter_bearer_token>
+export TWITTER_LIMIT=10   # optional override
+```
+
+**How to get Twitter API credentials:**
+
+1. Go to the [Twitter Developer Portal](https://developer.twitter.com/en/portal/dashboard)
+2. Create a new app or select an existing one
+3. Navigate to "Keys and tokens"
+4. Generate a "Bearer Token" under the "Authentication Tokens" section
+5. Copy the bearer token and set it as `TWITTER_BEARER_TOKEN`
+
 The Flask backend reads these variables, fetches posts, and exposes them through the `/api/dashboard` endpoint consumed by the Next.js app.
 
 For secured admin routes, configure a signing secret:
