@@ -4,6 +4,7 @@ import type { SocialMediaPost } from '@/types';
 import { Sentiment, VerificationStatus, Platform } from '@/types';
 import { PLATFORM_ICONS } from '@/data/mockData';
 import { format_date_in_hindi, getLanguageLabel } from '@/utils/localization';
+import { SentimentBar } from '@/components/SentimentBar';
 
 interface PostCardProps {
   post: SocialMediaPost;
@@ -147,6 +148,16 @@ export const PostCard: React.FC<PostCardProps> = ({ post }) => {
             </div>
           )}
         </div>
+        
+        {/* FE-CORE-001: Sentiment intensity visualization */}
+        {post.metrics.sentimentScore !== undefined && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <SentimentBar 
+              score={post.metrics.sentimentScore} 
+              label={post.sentiment}
+            />
+          </div>
+        )}
       </div>
     </article>
   );

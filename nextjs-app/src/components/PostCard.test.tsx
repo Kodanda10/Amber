@@ -61,4 +61,33 @@ describe('PostCard', () => {
     expect(media).toHaveAttribute('src', 'https://graph.facebook.com/leaderone/posts/12345/media');
     expect(media).toHaveAttribute('alt', 'Graph media for Leader One');
   });
+
+  // FE-CORE-001: Sentiment visualization test
+  it('renders sentiment bar when sentimentScore is present', () => {
+    const post = buildPost({
+      sentiment: Sentiment.Positive,
+      metrics: {
+        sentimentScore: 0.75,
+      } as SocialMediaPost['metrics'],
+    });
+    render(<PostCard post={post} />);
+
+    expect(screen.getByTestId('sentiment-bar-container')).toBeInTheDocument();
+    expect(screen.getByTestId('sentiment-score')).toHaveTextContent('0.75');
+    // Verify sentiment bar fill has correct width
+    const fill = screen.getByTestId('sentiment-bar-fill');
+    expect(fill.style.width).toBe('87.5%'); // (0.75 + 1) / 2 * 100 = 87.5%
+  });
+
+  it('does not render sentiment bar when sentimentScore is missing', () => {
+    const post = buildPost({
+      sentiment: Sentiment.Neutral,
+      metrics: {
+        sentimentScore: undefined,
+      } as SocialMediaPost['metrics'],
+    });
+    render(<PostCard post={post} />);
+
+    expect(screen.queryByTestId('sentiment-bar-container')).not.toBeInTheDocument();
+  });
 });

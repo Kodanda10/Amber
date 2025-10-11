@@ -67,7 +67,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | OBS-002 | Ingest Success Event | Emit structured ingest_success | log has leader, articles, durationMs | test_ingest_success_log_emitted | P0 | DONE | |
 | OBS-003 | Add Error Event Shape | All exceptions -> error log w/ stack | failing route simulation logs error | error log test | P1 | DONE | Structured handler emits JSON error + pytest coverage |
 | OBS-004 | Metrics Endpoint | Exposes ingest + uptime | /api/metrics returns expected keys | test_metrics_endpoint | P0 | DONE | |
-| OBS-005 | Coverage Threshold | Enforce >=80% lines backend | pytest fails if <80% | CI run failing below threshold | P1 | TODO | Set once stable |
+| OBS-005 | Coverage Threshold | Enforce >=80% lines backend | pytest fails if <80% | CI run failing below threshold | P1 | DONE | Implemented via pyproject.toml, same as CI-002 |
 | OBS-006 | CodeQL Integration | Security static analysis | workflow passes & alerts show in GH | workflow file | P2 | TODO | |
 
 ### 2.4 Localization & UI
@@ -80,7 +80,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 ### 2.5 Frontend Components & Data UX
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
 |----|-------|-------------|---------------------|-------|----------|--------|-------|
-| FE-CORE-001 | Post Sentiment Visualization | Show sentiment score intensity | UI gradient or bar reflects score | DOM test | P1 | TODO | |
+| FE-CORE-001 | Post Sentiment Visualization | Show sentiment score intensity | UI gradient or bar reflects score | DOM test | P1 | DONE | SentimentBar component with 10 tests |
 | FE-CORE-002 | Infinite Scroll (Stable) | Already implemented; stabilize w/ tests | IntersectionObserver mocked & loads more | observer test | P1 | DONE | 9 tests covering observer lifecycle |
 | FE-CORE-003 | Error Boundary | Catch render errors gracefully | Throwing child replaced by fallback | boundary test | P2 | TODO | |
 
@@ -125,17 +125,18 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 ---
 ## 3. CURRENT SNAPSHOT
 - Phase Active: P1 (Observability & Quality)
-- Highest Priority Upcoming: OBS-005, FE-CORE-001
-- Test Coverage: Backend at 83% (>80% threshold enforced); Frontend 18 tests passing with IntersectionObserver mock; Vitest covers PostCard Graph metadata + infinite scroll; pytest covers admin token flow + error logging shape + role-based access.
+- Highest Priority Upcoming: L10N-003, REV-002, REV-003
+- Test Coverage: Backend at 83% (>80% threshold enforced); Frontend 30 tests passing with IntersectionObserver mock + sentiment visualization; Vitest covers PostCard Graph metadata + infinite scroll + sentiment bar; pytest covers admin token flow + error logging shape + role-based access.
 - Logging: Structured request + ingest success + global error handler emitting JSON payloads.
 - Auth: Role-based access control with reviewer and admin roles protecting review endpoints.
 - CI: Backend coverage gate enforcing >=80% threshold.
+- UI: Sentiment intensity visualization with color-coded bars.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. OBS-005 (Codify coverage thresholds in reporting pipeline).
-2. FE-CORE-001 (Post sentiment visualization).
-3. L10N-003 (Toggle locale preference).
+1. L10N-003 (Toggle locale preference).
+2. REV-002 (Reviewer attribution on approve/reject).
+3. REV-003 (Edit-in-review workflow).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
