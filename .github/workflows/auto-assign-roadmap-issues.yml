@@ -1,0 +1,20 @@
+name: Auto-Assign Roadmap Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  auto-assign:
+    name: Assign Milestone and Assignee
+    runs-on: ubuntu-latest
+    # Only run if the issue has the TODO label
+    if: contains(github.event.issue.labels.*.name, 'TODO')
+    
+    steps:
+      - name: Assign milestone and assignee
+        uses: peter-evans/assign-issue@v3
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          assignees: Kodanda10
+          milestone: v1.0-Roadmap
