@@ -1,6 +1,5 @@
 
 from datetime import datetime
-import pytest
 
 # This import will fail initially, which is expected for TDD
 from utils import format_date_in_hindi

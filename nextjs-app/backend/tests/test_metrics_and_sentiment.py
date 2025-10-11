@@ -1,4 +1,6 @@
-import os, sys, importlib
+import os
+import sys
+import importlib
 from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
