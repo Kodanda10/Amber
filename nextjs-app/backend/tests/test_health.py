@@ -17,9 +17,12 @@ app = app_module.app
 def test_health():
     client = app.test_client()
     resp = client.get("/api/health")
-    assert resp.status_code == 200
+    # Accept both 200 and 503 (if Redis is down, service is degraded)
+    assert resp.status_code in (200, 503)
     data = resp.get_json()
-    assert data["status"] == "ok"
+    assert data["status"] in ("ok", "degraded")
     assert "timestamp" in data
-    assert "stats" in data and "leaders" in data["stats"]
+    assert "checks" in data
+    assert "database" in data["checks"]
+    assert data["checks"]["database"]["status"] == "ok"
     assert "build" in data and "version" in data["build"]

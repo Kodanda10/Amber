@@ -23,6 +23,16 @@ import x_client
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 import logging
 
+# Import rate limiter
+try:
+    from rate_limiter import rate_limit
+except ImportError:
+    # Fallback no-op decorator if rate_limiter not available
+    def rate_limit(key_type='ip', cost=1):
+        def decorator(func):
+            return func
+        return decorator
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///amber.db")
 POST_LIMIT = int(os.getenv("NEWS_POST_LIMIT", "6"))
 FACEBOOK_GRAPH_ENABLED = os.getenv("FACEBOOK_GRAPH_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
@@ -988,27 +998,87 @@ def handle_uncaught_exception(exc: Exception):
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
-    leader_count = Leader.query.count()
-    post_count = Post.query.count()
-    review_count = ReviewItem.query.count()
-    latest_post = (
-        Post.query.order_by(Post.timestamp.desc()).first()
-        if post_count > 0
-        else None
-    )
-    return {
+    """
+    Health check endpoint with database and Redis connectivity checks.
+    """
+    health_status = {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
-        "stats": {
-            "leaders": leader_count,
-            "posts": post_count,
-            "reviewItems": review_count,
-            "latestPostTimestamp": latest_post.timestamp.isoformat() if latest_post else None,
-            "totalIngests": _INGEST_METRICS["totalIngests"],
-            "lastIngestMs": _INGEST_METRICS["lastIngestMs"],
-        },
-        "build": BUILD_INFO,
+        "checks": {}
     }
+    
+    # Database check
+    try:
+        leader_count = Leader.query.count()
+        post_count = Post.query.count()
+        review_count = ReviewItem.query.count()
+        latest_post = (
+            Post.query.order_by(Post.timestamp.desc()).first()
+            if post_count > 0
+            else None
+        )
+        health_status["checks"]["database"] = {
+            "status": "ok",
+            "stats": {
+                "leaders": leader_count,
+                "posts": post_count,
+                "reviewItems": review_count,
+                "latestPostTimestamp": latest_post.timestamp.isoformat() if latest_post else None,
+            }
+        }
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["checks"]["database"] = {
+            "status": "error",
+            "error": str(e)
+        }
+    
+    # Redis check
+    try:
+        from rate_limiter import get_rate_limiter
+        limiter = get_rate_limiter()
+        limiter.redis_client.ping()
+        health_status["checks"]["redis"] = {
+            "status": "ok"
+        }
+    except Exception as e:
+        # Redis is optional for basic functionality
+        health_status["checks"]["redis"] = {
+            "status": "unavailable",
+            "error": str(e)
+        }
+    
+    # Ingestion scheduler check
+    try:
+        from ingestion_scheduler import get_scheduler
+        scheduler = get_scheduler()
+        if scheduler:
+            scheduler_status = scheduler.get_status()
+            health_status["checks"]["ingestion_scheduler"] = {
+                "status": "ok" if scheduler_status["running"] else "stopped",
+                "enabled": scheduler_status["enabled"],
+                "circuit_breaker_state": scheduler_status["circuit_breaker_state"]
+            }
+        else:
+            health_status["checks"]["ingestion_scheduler"] = {
+                "status": "not_initialized"
+            }
+    except Exception as e:
+        health_status["checks"]["ingestion_scheduler"] = {
+            "status": "error",
+            "error": str(e)
+        }
+    
+    health_status["stats"] = {
+        "totalIngests": _INGEST_METRICS["totalIngests"],
+        "lastIngestMs": _INGEST_METRICS["lastIngestMs"],
+    }
+    health_status["build"] = BUILD_INFO
+    
+    # Return 503 if critical components are down
+    status_code = 200 if health_status["status"] == "ok" else 503
+    
+    return jsonify(health_status), status_code
 
 
 @app.route("/api/metrics", methods=["GET"])
@@ -1030,6 +1100,70 @@ def sentiment_batch():
         label, score = classify_sentiment(t or "", return_score=True)
         results.append({"text": t, "sentiment": label, "score": score})
     return jsonify({"results": results})
+
+
+@app.route("/api/ingestion/status", methods=["GET"])
+def ingestion_status():
+    """Get detailed status of the X ingestion scheduler."""
+    try:
+        from ingestion_scheduler import get_scheduler
+        scheduler = get_scheduler()
+        
+        if not scheduler:
+            return jsonify({
+                "error": "Scheduler not initialized",
+                "enabled": False
+            }), 503
+        
+        status = scheduler.get_status()
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "enabled": False
+        }), 500
+
+
+@app.route("/api/ingestion/trigger", methods=["POST"])
+@require_auth(allowed_roles=["admin"])
+def trigger_ingestion():
+    """
+    Manually trigger X ingestion for all leaders.
+    Requires admin authentication.
+    """
+    try:
+        from ingestion_scheduler import get_scheduler
+        scheduler = get_scheduler()
+        
+        if not scheduler:
+            return jsonify({
+                "error": "Scheduler not initialized"
+            }), 503
+        
+        # Get backfill parameter
+        payload = request.get_json(silent=True) or {}
+        backfill = payload.get("backfill", False)
+        
+        # Run ingestion in background
+        import threading
+        thread = threading.Thread(
+            target=scheduler.run_once,
+            kwargs={"backfill": backfill}
+        )
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            "status": "triggered",
+            "backfill": backfill,
+            "message": "Ingestion started in background"
+        })
+    except Exception as e:
+        app.logger.error(f"Error triggering ingestion: {e}", exc_info=True)
+        return jsonify({
+            "error": str(e)
+        }), 500
+
 
 
 @app.route("/api/dashboard", methods=["GET"])
@@ -1079,6 +1213,7 @@ def delete_leader(leader_id: str):
 
 
 @app.route("/api/leaders/<leader_id>/refresh", methods=["POST"])
+@rate_limit(key_type='ip', cost=1)
 def refresh_leader(leader_id: str):
     leader = db.session.get(Leader, leader_id)
     if not leader:
@@ -1138,6 +1273,100 @@ def list_posts_paginated():
         "hasMore": has_more,
     }
     return jsonify(payload)
+
+
+@app.route("/api/feed", methods=["GET"])
+@rate_limit(key_type='ip', cost=1)
+def get_feed():
+    """
+    Unified feed API endpoint for X posts and other social media content.
+    
+    Query params:
+        leaders: Comma-separated list of leader IDs (optional)
+        page: Page number (default 1)
+        page_size: Results per page (default 20, max 100)
+        source: Filter by source platform ('x', 'facebook', 'news', etc.)
+    
+    Returns:
+        {
+            "posts": [...],
+            "page": int,
+            "page_size": int,
+            "total": int,
+            "has_next": bool
+        }
+    """
+    # Parse query parameters
+    leaders_param = request.args.get("leaders", "")
+    page = max(1, int(request.args.get("page", "1")))
+    page_size = min(100, max(1, int(request.args.get("page_size", "20"))))
+    source_filter = request.args.get("source", "").lower()
+    
+    # Validate leader IDs
+    leader_ids = []
+    if leaders_param:
+        leader_ids = [lid.strip() for lid in leaders_param.split(",") if lid.strip()]
+    
+    # Build query
+    query = Post.query
+    
+    # Filter by leaders if specified
+    if leader_ids:
+        query = query.filter(Post.leader_id.in_(leader_ids))
+    
+    # Filter by source platform if specified
+    if source_filter:
+        # Map 'x' to 'X' platform
+        platform_map = {
+            "x": "X",
+            "twitter": "X",
+            "facebook": "Facebook",
+            "news": "News",
+        }
+        platform = platform_map.get(source_filter, source_filter.title())
+        query = query.filter(Post.platform == platform)
+    
+    # Get total count
+    total = query.count()
+    
+    # Apply pagination and ordering
+    offset = (page - 1) * page_size
+    posts = query.order_by(Post.timestamp.desc()).offset(offset).limit(page_size).all()
+    
+    # Calculate pagination info
+    has_next = (offset + page_size) < total
+    
+    # Serialize posts to safe JSON format
+    serialized_posts = []
+    for post in posts:
+        post_dict = post.to_dict()
+        # Add permalink for X posts
+        if post.platform == "X":
+            metrics = post.metrics or {}
+            external_id = metrics.get("externalId")
+            if external_id and post.leader:
+                x_handle = post.leader.handles.get("x") if post.leader.handles else None
+                if x_handle:
+                    post_dict["permalink"] = f"https://twitter.com/{x_handle}/status/{external_id}"
+        
+        # Add author information
+        if post.leader:
+            post_dict["author"] = {
+                "id": post.leader.id,
+                "name": post.leader.name,
+                "handle": post.leader.handles.get("x") or post.leader.handles.get("twitter") or "",
+                "display_name": post.leader.name
+            }
+        
+        serialized_posts.append(post_dict)
+    
+    return jsonify({
+        "posts": serialized_posts,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "has_next": has_next
+    })
 
 
 @app.route("/api/posts", methods=["POST"])
@@ -1248,9 +1477,22 @@ def init_db() -> None:
 START_TIME = datetime.utcnow()
 with app.app_context():
     init_db()
+    # Initialize X ingestion scheduler
+    try:
+        from ingestion_scheduler import init_scheduler
+        init_scheduler(app, db)
+        app.logger.info("X ingestion scheduler initialized")
+    except Exception as e:
+        app.logger.warning(f"Failed to initialize X ingestion scheduler: {e}")
 
 
 if __name__ == "__main__":
     with app.app_context():
         init_db()
+        # Initialize scheduler for dev mode
+        try:
+            from ingestion_scheduler import init_scheduler
+            init_scheduler(app, db)
+        except Exception as e:
+            app.logger.warning(f"Failed to initialize scheduler: {e}")
     app.run(debug=True)
