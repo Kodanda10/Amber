@@ -26,5 +26,5 @@ global.IntersectionObserver = class IntersectionObserver {
   readonly root: Element | null = null;
   readonly rootMargin: string = '';
   readonly thresholds: readonly number[] = [];
-} as any;
+} as unknown as typeof IntersectionObserver;
 
