@@ -19,6 +19,7 @@ from werkzeug.exceptions import HTTPException
 from news_sources import fetch_articles
 from sentiment import classify_sentiment
 import facebook_client
+import twitter_client
 import x_client
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 import logging
@@ -27,6 +28,8 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///amber.db")
 POST_LIMIT = int(os.getenv("NEWS_POST_LIMIT", "6"))
 FACEBOOK_GRAPH_ENABLED = os.getenv("FACEBOOK_GRAPH_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
 FACEBOOK_GRAPH_LIMIT = int(os.getenv("FACEBOOK_GRAPH_LIMIT", "10"))
+TWITTER_ENABLED = os.getenv("TWITTER_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
+TWITTER_LIMIT = int(os.getenv("TWITTER_LIMIT", "10"))
 X_INGEST_ENABLED = os.getenv("X_INGEST_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 X_INGEST_LIMIT = int(os.getenv("X_INGEST_LIMIT", "10"))
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "amber-dev-secret")
