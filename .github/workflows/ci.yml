@@ -97,12 +97,10 @@ jobs:
           severity: HIGH,CRITICAL
 
       - name: Gitleaks
-        env:
-          GITLEAKS_VERSION: v8.18.2
-        run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz \
-            | tar -xz gitleaks
-          ./gitleaks detect --source=. --no-git --redact
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          fail-on-leaks: true
+          redact: true
 
   e2e:
     name: E2E Placeholder
