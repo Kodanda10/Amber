@@ -1,0 +1,12 @@
+{
+  "name": "Dashboard",
+  "display_name": "Dashboard",
+  "type": "page",
+  "widgets": [
+    {
+      "type": "html",
+      "name": "Intro",
+      "content": "<h2>Amber Experimental Dashboard</h2><p>Filters and charts will be added in subsequent PRs.</p>"
+    }
+  ]
+}

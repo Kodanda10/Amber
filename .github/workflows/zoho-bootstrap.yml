@@ -1,0 +1,42 @@
+name: Zoho Creator Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in dry-run mode (no changes)"
+        required: true
+        default: "true"
+        type: choice
+        options: ["true", "false"]
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Bootstrap Creator app
+        env:
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_OWNER: ${{ secrets.ZOHO_OWNER }}
+          ZOHO_APP_NAME: ${{ secrets.ZOHO_APP_NAME }}
+          ZOHO_APP_LINK_NAME: ${{ secrets.ZOHO_APP_LINK_NAME }}
+          ZOHO_DC: ${{ secrets.ZOHO_DC }}
+        run: |
+          DRY=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then DRY="--dry-run"; fi
+          python3 tools/zoho_creator/bootstrap_creator.py $DRY

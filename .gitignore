@@ -18,6 +18,8 @@ nextjs-app/instance/
 nextjs-app/backend/.venv/
 nextjs-app/backend/__pycache__/
 nextjs-app/backend/tests/__pycache__/
+__pycache__/
+*.pyc
 
 # Editor directories and files
 .vscode/*

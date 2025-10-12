@@ -1,0 +1,60 @@
+{
+  "name": "Leaders",
+  "display_name": "Leaders",
+  "fields": [
+    {
+      "name": "name",
+      "label": "Name",
+      "type": "single_line",
+      "required": true
+    },
+    {
+      "name": "party",
+      "label": "Party",
+      "type": "single_line"
+    },
+    {
+      "name": "region",
+      "label": "Region",
+      "type": "single_line"
+    },
+    {
+      "name": "avatarUrl",
+      "label": "Avatar URL",
+      "type": "url"
+    },
+    {
+      "name": "platformAccounts",
+      "label": "Platform Accounts",
+      "type": "subform",
+      "subform": {
+        "fields": [
+          {
+            "name": "platform",
+            "label": "Platform",
+            "type": "dropdown",
+            "choices": ["facebook", "x"],
+            "required": true
+          },
+          {
+            "name": "handle",
+            "label": "Handle",
+            "type": "single_line",
+            "required": true
+          },
+          {
+            "name": "platformUserId",
+            "label": "Platform User ID",
+            "type": "single_line"
+          },
+          {
+            "name": "active",
+            "label": "Active",
+            "type": "checkbox",
+            "default_value": true
+          }
+        ]
+      }
+    }
+  ]
+}

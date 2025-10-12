@@ -1,0 +1,66 @@
+{
+  "name": "Posts",
+  "display_name": "Posts",
+  "fields": [
+    {
+      "name": "platformPostId",
+      "label": "Platform Post ID",
+      "type": "single_line",
+      "required": true,
+      "unique": true
+    },
+    {
+      "name": "leader",
+      "label": "Leader",
+      "type": "lookup",
+      "lookup": {
+        "form_link_name": "Leaders",
+        "display_field": "name"
+      },
+      "required": true
+    },
+    {
+      "name": "platform",
+      "label": "Platform",
+      "type": "dropdown",
+      "choices": ["facebook", "x"],
+      "required": true
+    },
+    {
+      "name": "text",
+      "label": "Text",
+      "type": "multi_line"
+    },
+    {
+      "name": "createdAt",
+      "label": "Created At",
+      "type": "date_time",
+      "required": true
+    },
+    {
+      "name": "mediaUrl",
+      "label": "Media URL",
+      "type": "url"
+    },
+    {
+      "name": "avatarUrl",
+      "label": "Avatar URL",
+      "type": "url"
+    },
+    {
+      "name": "metrics",
+      "label": "Metrics (JSON)",
+      "type": "multi_line"
+    },
+    {
+      "name": "permalinkUrl",
+      "label": "Permalink",
+      "type": "url"
+    },
+    {
+      "name": "rawJson",
+      "label": "Raw JSON",
+      "type": "multi_line"
+    }
+  ]
+}
