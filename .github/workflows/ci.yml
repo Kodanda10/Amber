@@ -43,9 +43,23 @@ jobs:
   backend:
     name: Backend - Tests & Quality
     runs-on: ubuntu-latest
+    
+    # Add Redis service for rate limiting tests
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     defaults:
       run:
         working-directory: nextjs-app
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,6 +84,9 @@ jobs:
           ruff check backend || true
 
       - name: Run tests
+        env:
+          REDIS_URL: redis://localhost:6379/0
+          RATE_LIMITING_ENABLED: true
         run: |
           cd backend
           python -m pytest -q --maxfail=1 --disable-warnings --cov=. --cov-report=xml --cov-fail-under=80
