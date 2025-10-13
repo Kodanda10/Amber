@@ -24,6 +24,15 @@ import x_client
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 import logging
 
+# Production hardening imports
+try:
+    from embed_token_service import EmbedTokenService
+    from rate_limiter import RateLimiter
+    EMBED_AVAILABLE = True
+except ImportError:
+    EMBED_AVAILABLE = False
+    logging.warning("Embed token service not available")
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///amber.db")
 POST_LIMIT = int(os.getenv("NEWS_POST_LIMIT", "6"))
 FACEBOOK_GRAPH_ENABLED = os.getenv("FACEBOOK_GRAPH_ENABLED", "0").lower() in {"1", "true", "yes", "on"}
@@ -35,6 +44,8 @@ X_INGEST_LIMIT = int(os.getenv("X_INGEST_LIMIT", "10"))
 ADMIN_JWT_SECRET = os.getenv("ADMIN_JWT_SECRET", "amber-dev-secret")
 ADMIN_JWT_TTL = int(os.getenv("ADMIN_JWT_TTL", "3600"))
 ADMIN_BOOTSTRAP_SECRET = os.getenv("ADMIN_BOOTSTRAP_SECRET", ADMIN_JWT_SECRET)
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
+EMBED_ENABLED = os.getenv("EMBED_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
@@ -42,6 +53,21 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Initialize embed token service if enabled
+_embed_service = None
+_embed_rate_limiter = None
+if EMBED_ENABLED and EMBED_AVAILABLE:
+    try:
+        _embed_service = EmbedTokenService()
+        _embed_rate_limiter = RateLimiter(
+            max_requests=int(os.getenv("EMBED_RATE_LIMIT_REQUESTS", "10")),
+            window_seconds=int(os.getenv("EMBED_RATE_LIMIT_WINDOW", "60"))
+        )
+        app.logger.info("Embed token service initialized")
+    except Exception as e:
+        app.logger.error("Failed to initialize embed token service: %s", e)
+        EMBED_ENABLED = False
 
 
 def require_auth(allowed_roles: Optional[List[str]] = None):
@@ -191,6 +217,11 @@ _INGEST_METRICS = {
     "totalIngests": 0,
     "lastIngestMs": 0,
     "lastError": None,
+    "ingestion_processed": 0,
+    "ingestion_failed": 0,
+    "ingestion_rate_limited": 0,
+    "embed_token_requested": 0,
+    "embed_token_failed": 0,
 }
 
 
@@ -944,6 +975,85 @@ def admin_token():
     return jsonify({"token": token, "expiresIn": ADMIN_JWT_TTL})
 
 
+@app.route("/api/embed/token", methods=["POST"])
+def embed_token():
+    """
+    Generate secure embed token for dashboard embedding.
+    Requires authentication via API key or session.
+    Rate-limited per requester.
+    """
+    if not EMBED_ENABLED:
+        return jsonify({"error": "feature_disabled", "details": "Embedding is not enabled"}), 503
+    
+    if not _embed_service:
+        return jsonify({"error": "service_unavailable", "details": "Embed service not initialized"}), 503
+    
+    # Authenticate request
+    # Option 1: API key in Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    api_key_valid = False
+    user_id = None
+    
+    if auth_header.startswith("Bearer ") and ADMIN_API_KEY:
+        provided_key = auth_header.split(" ", 1)[1].strip()
+        if provided_key == ADMIN_API_KEY:
+            api_key_valid = True
+            user_id = "admin"
+    
+    # Option 2: Session-based authentication (check if admin token is valid)
+    if not api_key_valid:
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1].strip()
+            payload = _verify_admin_token(token)
+            if payload:
+                api_key_valid = True
+                user_id = payload.get("admin", "authenticated")
+    
+    if not api_key_valid:
+        _INGEST_METRICS["embed_token_failed"] += 1
+        return jsonify({
+            "error": "unauthorized",
+            "details": "Valid API key or session token required"
+        }), 401
+    
+    # Rate limiting
+    rate_limit_key = user_id or request.remote_addr
+    if _embed_rate_limiter and not _embed_rate_limiter.is_allowed(rate_limit_key):
+        _INGEST_METRICS["embed_token_failed"] += 1
+        remaining = _embed_rate_limiter.get_remaining(rate_limit_key)
+        return jsonify({
+            "error": "rate_limit_exceeded",
+            "details": "Too many requests",
+            "remaining": remaining
+        }), 429
+    
+    # Parse request
+    payload = request.get_json(silent=True) or {}
+    dashboard_id = payload.get("dashboardId")
+    allowed_origins = payload.get("allowedOrigins")
+    
+    if not dashboard_id:
+        _INGEST_METRICS["embed_token_failed"] += 1
+        return jsonify({"error": "invalid_request", "details": "dashboardId is required"}), 400
+    
+    try:
+        # Generate token
+        result = _embed_service.generate_token(
+            dashboard_id=dashboard_id,
+            user_id=user_id,
+            allowed_origins=allowed_origins,
+        )
+        
+        _INGEST_METRICS["embed_token_requested"] += 1
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        _INGEST_METRICS["embed_token_failed"] += 1
+        app.logger.error("Failed to generate embed token: %s", str(e))
+        return jsonify({"error": "internal_error", "details": "Failed to generate token"}), 500
+
+
 @app.errorhandler(Exception)
 def handle_uncaught_exception(exc: Exception):
     status = 500
@@ -989,35 +1099,116 @@ def handle_uncaught_exception(exc: Exception):
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
-    leader_count = Leader.query.count()
-    post_count = Post.query.count()
-    review_count = ReviewItem.query.count()
-    latest_post = (
-        Post.query.order_by(Post.timestamp.desc()).first()
-        if post_count > 0
-        else None
-    )
-    return {
-        "status": "ok",
-        "timestamp": datetime.utcnow().isoformat(),
-        "stats": {
+    """
+    Health check endpoint with DB connectivity check.
+    Used by liveness and readiness probes.
+    """
+    status = "ok"
+    checks = {}
+    
+    # Check database connectivity
+    try:
+        # Simple query to test DB connection
+        db.session.execute(db.text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = "error"
+        status = "degraded"
+        app.logger.error("Database health check failed: %s", str(e))
+    
+    # Check basic stats
+    try:
+        leader_count = Leader.query.count()
+        post_count = Post.query.count()
+        review_count = ReviewItem.query.count()
+        latest_post = (
+            Post.query.order_by(Post.timestamp.desc()).first()
+            if post_count > 0
+            else None
+        )
+        
+        checks["stats"] = {
             "leaders": leader_count,
             "posts": post_count,
             "reviewItems": review_count,
             "latestPostTimestamp": latest_post.timestamp.isoformat() if latest_post else None,
+        }
+    except Exception as e:
+        checks["stats"] = "error"
+        status = "degraded"
+        app.logger.error("Stats collection failed: %s", str(e))
+    
+    response = {
+        "status": status,
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": checks,
+        "metrics": {
             "totalIngests": _INGEST_METRICS["totalIngests"],
             "lastIngestMs": _INGEST_METRICS["lastIngestMs"],
         },
         "build": BUILD_INFO,
     }
+    
+    http_code = 200 if status == "ok" else 503
+    return jsonify(response), http_code
 
 
 @app.route("/api/metrics", methods=["GET"])
-def metrics():  # simple in-memory metrics exposition
-    return jsonify({
-        "ingest": _INGEST_METRICS,
-        "uptimeSeconds": int((datetime.utcnow() - START_TIME).total_seconds()),
-    })
+def metrics():
+    """
+    Prometheus-style metrics endpoint.
+    Returns metrics for ingestion and embedding operations.
+    """
+    # Get embed metrics if available
+    embed_metrics = {}
+    if _embed_service:
+        embed_metrics = _embed_service.get_metrics()
+    
+    prometheus_metrics = []
+    
+    # Ingestion metrics
+    prometheus_metrics.append(f"# HELP ingestion_processed Total number of posts processed")
+    prometheus_metrics.append(f"# TYPE ingestion_processed counter")
+    prometheus_metrics.append(f"ingestion_processed {_INGEST_METRICS['ingestion_processed']}")
+    
+    prometheus_metrics.append(f"# HELP ingestion_failed Total number of ingestion failures")
+    prometheus_metrics.append(f"# TYPE ingestion_failed counter")
+    prometheus_metrics.append(f"ingestion_failed {_INGEST_METRICS['ingestion_failed']}")
+    
+    prometheus_metrics.append(f"# HELP ingestion_rate_limited Total number of rate limit hits")
+    prometheus_metrics.append(f"# TYPE ingestion_rate_limited counter")
+    prometheus_metrics.append(f"ingestion_rate_limited {_INGEST_METRICS['ingestion_rate_limited']}")
+    
+    # Embed metrics
+    if embed_metrics:
+        prometheus_metrics.append(f"# HELP embed_token_requested Total number of embed token requests")
+        prometheus_metrics.append(f"# TYPE embed_token_requested counter")
+        prometheus_metrics.append(f"embed_token_requested {embed_metrics.get('token_requested', 0)}")
+        
+        prometheus_metrics.append(f"# HELP embed_token_failed Total number of embed token failures")
+        prometheus_metrics.append(f"# TYPE embed_token_failed counter")
+        prometheus_metrics.append(f"embed_token_failed {embed_metrics.get('token_failed', 0)}")
+        
+        prometheus_metrics.append(f"# HELP embed_token_validated Total number of successful token validations")
+        prometheus_metrics.append(f"# TYPE embed_token_validated counter")
+        prometheus_metrics.append(f"embed_token_validated {embed_metrics.get('token_validated', 0)}")
+    
+    # Uptime
+    uptime_seconds = int((datetime.utcnow() - START_TIME).total_seconds())
+    prometheus_metrics.append(f"# HELP uptime_seconds Application uptime in seconds")
+    prometheus_metrics.append(f"# TYPE uptime_seconds counter")
+    prometheus_metrics.append(f"uptime_seconds {uptime_seconds}")
+    
+    # Return as both JSON and Prometheus text format
+    accept_header = request.headers.get("Accept", "")
+    if "text/plain" in accept_header or "application/openmetrics-text" in accept_header:
+        return "\n".join(prometheus_metrics) + "\n", 200, {"Content-Type": "text/plain; version=0.0.4"}
+    else:
+        return jsonify({
+            "ingest": _INGEST_METRICS,
+            "embed": embed_metrics,
+            "uptimeSeconds": uptime_seconds,
+        })
 
 
 @app.route("/api/sentiment/batch", methods=["POST"])
