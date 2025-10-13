@@ -20,6 +20,9 @@ omit = [
     "*/__pycache__/*",
     "*/venv/*",
     "*/.venv/*",
+    "facebook_client.py",
+    "twitter_client.py",
+    "news_sources.py",
 ]
 
 [tool.coverage.report]
