@@ -18,6 +18,9 @@ nextjs-app/instance/
 nextjs-app/backend/.venv/
 nextjs-app/backend/__pycache__/
 nextjs-app/backend/tests/__pycache__/
+nextjs-app/backend/.coverage
+nextjs-app/backend/coverage.xml
+nextjs-app/backend/htmlcov/
 __pycache__/
 *.pyc
 
