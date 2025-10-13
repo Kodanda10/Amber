@@ -129,7 +129,7 @@ def test_deduplication_by_external_id():
         mock_client.fetch_user_timeline.return_value = mock_x_data
         
         with patch('app.x_client.create_client', return_value=mock_client):
-            posts = app_module.ingest_x_posts(leader.id)
+            app_module.ingest_x_posts(leader.id)
         
         # Should not create duplicate - should return existing post
         all_posts = Post.query.filter_by(leader_id=leader.id).all()

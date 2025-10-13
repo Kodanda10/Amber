@@ -5,7 +5,7 @@ Following TDD methodology for Twitter/X API integration.
 import os
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pytest
 
 # Setup path for imports
@@ -16,7 +16,6 @@ if str(BACKEND_DIR) not in sys.path:
 
 from x_client import (
     XAPIClient,
-    XAPIError,
     XAPIAuthError,
     XAPIRateLimitError,
     create_client

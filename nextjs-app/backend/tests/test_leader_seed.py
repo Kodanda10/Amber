@@ -69,7 +69,7 @@ def test_leader_has_x_handle(monkeypatch):
             assert "x" in leader.handles, f"Leader {leader.name} missing X handle"
             assert leader.handles["x"], f"Leader {leader.name} has empty X handle"
             # X handles should not have @ prefix (username only)
-            assert not leader.handles["x"].startswith("@"), f"X handle should not have @ prefix"
+            assert not leader.handles["x"].startswith("@"), "X handle should not have @ prefix"
 
 
 def test_api_returns_x_handles(monkeypatch):
