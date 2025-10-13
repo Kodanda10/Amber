@@ -210,10 +210,15 @@ pytest --maxfail=1           # Stop after first failure
 
 ## 🚢 Deployment
 
-### Production Build
+For comprehensive production deployment instructions, see:
+- **[Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md)** - Complete setup including Render, Vercel, and Zoho Creator
+- **[Original Deployment Notes](docs/DEPLOYMENT.md)** - Backend and frontend deployment basics
+
+### Quick Start Production Build
 
 ```bash
 # Build frontend
+cd nextjs-app
 npm run build
 
 # Backend deployment (example with gunicorn)
@@ -221,33 +226,58 @@ cd backend
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
 
-### Environment Variables (Production)
+### Key Environment Variables
 
 ```bash
-# Required
+# Backend (Required)
 DATABASE_URL=postgresql://user:pass@host:5432/amber
-FACEBOOK_GRAPH_TOKEN=production_token
 ADMIN_JWT_SECRET=production_secret
 
-# Optional
+# Backend (Optional Features)
+TWITTER_BEARER_TOKEN=your_bearer_token
+X_INGEST_ENABLED=true
+FACEBOOK_GRAPH_TOKEN=production_token
 FACEBOOK_GRAPH_ENABLED=1
-FACEBOOK_GRAPH_LIMIT=10
+
+# Frontend
+NEXT_PUBLIC_API_BASE=https://your-backend-url.com
 ```
+
+### Production Endpoints
+
+Once deployed, your backend will expose:
+- **Health Check:** `GET /api/health` - Service status and statistics
+- **Metrics:** `GET /api/metrics` - Performance and ingestion metrics
+- **Dashboard API:** `GET /api/dashboard` - Main dashboard data
+- **Leaders API:** `GET /api/leaders` - Leader roster management
+
+### Zoho Creator Integration
+
+The repository includes automated Zoho Creator app provisioning:
+
+1. Configure GitHub Secrets (see [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md#zoho-creator-setup))
+2. Run the "Zoho Creator Bootstrap" workflow from GitHub Actions
+3. Access your app at: `https://creator.zoho.com/{owner}/amber_experimental/`
 
 ### CI/CD Pipeline
 
 The project uses GitHub Actions for continuous integration:
 
 - **Frontend Job**: Lint, type-check, and build Next.js app
-- **Backend Job**: Python tests with pytest and coverage reporting
+- **Backend Job**: Python tests with pytest and 80% coverage requirement
 - **Security Job**: Trivy vulnerability scanning and Gitleaks secret detection
+- **Zoho Bootstrap**: Manual workflow for Creator app provisioning
 - **E2E Job**: Placeholder for Playwright end-to-end tests
 
 All checks must pass before merging to main.
 
 ## 📚 Documentation
 
-- [Product Requirements Document](PRD.md) - Detailed feature specifications
+### Core Documentation
+- **[Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md)** - Complete production setup (Render, Vercel, Zoho Creator)
+- **[Deployment Notes](docs/DEPLOYMENT.md)** - Backend and frontend deployment basics
+- **[Zoho Creator Bootstrap](tools/zoho_creator/README.md)** - Zoho Creator API integration details
+- **[Product Requirements Document](PRD.md)** - Detailed feature specifications
 - [Development Roadmap](ToDoList.md) - Task tracking and progress
 - [API Documentation](nextjs-app/backend/README.md) - Backend API endpoints
 - [Component Guide](nextjs-app/src/components/README.md) - Frontend components
