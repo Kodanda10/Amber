@@ -29,3 +29,10 @@ This log tracks all development activities performed by the Gemini agent, follow
 *   **Admin token issuance endpoint:** Added `/api/admin/token` gated by `ADMIN_BOOTSTRAP_SECRET` alongside pytest coverage (`tests/test_auth.py`) ensuring tokens flow through `/api/admin/ping`.
 *   **Structured error logging:** Centralized exception handler emits JSON error envelopes and logs with request correlation; verified via `tests/test_observability_and_ingest.py::test_error_log_shape_on_exception`.
 *   **Removed legacy Vite stack:** Deleted `archive/vite-app/` so the repository solely reflects the Next.js implementation.
+
+## Development Actions (October 13, 2025)
+
+*   **Phase 2 analytics roadmap documented:** Authored ANA-001…ANA-007 plan in `PRD.md` and `ToDoList.md`, capturing dedup, parser snapshots, leader insights, smart datasets, Genkit chatbot, and bias mitigation workflows. Emphasized TDD-first expectations for each task.
+*   **Dhruv reference codified:** Noted that Phase 2 mirrors Project Dhruv’s TDD Hindi parsing dashboard (48-post dataset, regex extraction, Devanagari UI, health checks, feature flags, CI gates).
+*   **Agent playbook refreshed:** Updated `AGENTS.md` with Phase 2 objective, new feature flags (`SMART_DATASET_ENABLED`, `CHATBOT_ENABLED`), and instructions to keep documentation efforts isolated via worktrees.
+*   **Compliance log:** Recorded roadmap alignment in `ToDoList.md` change log and noted follow-up actions for Genkit setup and ANA-specific test scaffolding.

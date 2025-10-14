@@ -408,3 +408,37 @@ Adherence to the Ironclad DevOps Rulebook v2.1 mandates a comprehensive testing 
 *   **Notifications:** Email, in-app notifications for review tasks, data anomalies.
 *   **Machine Learning:** For advanced data classification, anomaly detection, sentiment analysis.
 *   **Multi-tenancy:** Support for multiple independent groups/projects.
+
+## 9. Phase 2 — Analytics, Smart Datasets, and Genkit Enablement
+
+Phase 2 formalizes the analytics and intelligent dataset workstream. Every item below is an atomic task that MUST follow the Ironclad DevOps Rulebook cadence (Plan → red → green → refactor → document). Tests listed are to be authored first (failing), then driven to green.
+
+This section builds directly on the proven Project Dhruv pattern: a TDD-first Next.js dashboard for OP Choudhary’s 1–6 Sept 2025 X posts that hardcodes a 48-post Hindi dataset, parses 'when/where/what/which/how' via regex-driven Hindi dates, place/action dictionaries, and hashtag/mention scrapes, renders a Noto Sans Devanagari table with metrics, and ships health checks, feature flags, reversibility, and CI gates (coverage ≥85% / ≥70% branches, a11y, perf, security, SBOM, docs). Amber Phase 2 extends that blueprint to every tracked leader while layering automated datasets, bias monitoring, and Genkit-powered analytics.
+
+| Task ID | Title | Description | Acceptance Criteria | Planned Tests | Priority |
+|---------|-------|-------------|---------------------|---------------|----------|
+| ANA-001 | Cross-platform Dedup Guard | Add DB + service enforcement to ignore already ingested posts | Unique constraint on `(platform, platformPostId)`; ingestion skips duplicates and logs dedup metrics | `tests/test_x_ingestion.py::test_duplicate_external_id_rejected`, `tests/test_facebook_ingestion.py::test_duplicate_platform_post_id_ignored` | P0 |
+| ANA-002 | Parser Snapshot Persistence | Store Dhruv-style parsed payload (when/where/what/mentions/hashtags) for every post | Parser module extracts Hindi dates/keywords; `Post.metrics.parsed` populated; backfill command idempotent | `tests/test_post_parser.py::test_hindi_date_and_entities`, `tests/test_backfill_parsed_posts.py::test_idempotent_backfill` | P0 |
+| ANA-003 | Leader Insights Dataset | Materialize per-leader analytics (top actions, sentiment, cadence) with bias indicators | Nightly job fills `leader_insights` table; `/api/analytics/leader/<id>` returns insight doc; bias monitor flags low activity | `tests/test_leader_insights.py::test_metrics_rollup`, `tests/test_bias_monitor.py::test_skew_alert_triggered` | P0 |
+| ANA-004 | Smart Dataset Builder | Emit per-leader + unified JSONL/Parquet datasets with registry metadata | Build script outputs files with schema checksum; metadata stored in `dataset_versions`; CLI smoke passes | `tests/test_dataset_builder.py::test_generates_per_leader_files`, `tests/test_dataset_registry.py::test_metadata_recorded` | P1 |
+| ANA-005 | Genkit RAG Pipeline | Use Google Genkit to embed datasets and answer questions via chatbot | Genkit flow ingests dataset, stores embeddings, exposes query function; answers cite dataset row ids | `genkit/tests/pipeline.test.ts::test_embedding_job_runs`, `tests/test_chatbot_route.py::test_response_contains_sources` | P1 |
+| ANA-006 | Analytics Hub UI | New dashboard page with Dhruv-style table, filters, metrics cards, chatbot widget | Filters by leader + date; renders combined/all view; chatbot sends query to `/api/chatbot/query` | `src/tests/analytics-page.test.tsx::renders_filtered_leader_table`, `src/tests/chatbot-widget.test.tsx::submits_query_and_streams_answer` | P1 |
+| ANA-007 | Bias Mitigation & CI Gate | Surface bias scores and fail CI when threshold exceeded | `/api/metrics` exposes bias summary; analytics UI shows bias banner; CI job fails on breach | `tests/test_bias_ci_gate.py::test_pipeline_fails_on_threshold`, `src/tests/analytics-page.test.tsx::shows_bias_banner` | P1 |
+
+### 9.1 Genkit Integration Plan
+- **Workspace:** `genkit/` directory with `ingest.ts`, `chatbot.ts`, and typed config.
+- **Pipelines:** Ingest dataset → generate embeddings (Vertex AI) → store in vector DB (pgvector/Firestore).
+- **Secrets:** New `.env` entries (`GENKIT_API_KEY`, `GENKIT_PROJECT_ID`, `VECTOR_DB_URL`) managed via Railway/Vercel.
+- **Testing:** `npm run genkit:test` harness with mocked Vertex responses to keep CI deterministic.
+
+### 9.2 Bias Mitigation Strategy
+- Track ingestion parity (posts per leader/week), sentiment distribution, and media coverage.
+- Emit structured metrics to Prometheus + `/api/metrics`.
+- Alert thresholds configurable via `BIAS_ALERT_THRESHOLD`; CI job `bias-gate` consumes JSON report.
+- Document reviewer steps for bias remediation in `docs/analytics.md`.
+
+### 9.3 Documentation & Operations
+- Update `README.md` analytics section once ANA tasks land.
+- Extend `ToDoList.md` with ANA task statuses and changelog entries.
+- Add runbooks: `docs/analytics.md` (dataset schema, rebuild instructions), `docs/chatbot.md` (Genkit ops, rollback).
+- Ensure every ANA task ships with rollback plan + feature flag (`ANALYTICS_DASH_ENABLED`, `SMART_DATASET_ENABLED`, `CHATBOT_ENABLED`).

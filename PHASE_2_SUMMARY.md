@@ -4,6 +4,10 @@
 
 Phase 2 introduces **Advanced Review & Moderation** capabilities and a **Twitter/X ingestion pipeline** to expand Amber's social media tracking to multiple platforms. This document tracks implementation progress following strict TDD methodology.
 
+> **2025-10-13 Update:** Phase 2 scope now formally includes the Analytics & Intelligent Dataset initiative (ANA-001…ANA-007). All implementation must proceed via atomic tasks with failing-tests-first, isolated worktrees/branches, and CI verification per task.
+
+This extension explicitly mirrors the Project Dhruv dashboard—a TDD-first Hindi analytics build for OP Choudhary’s Sept 1–6 2025 X posts that hardcodes 48 entries, parses when/where/what/which/how via regex dictionaries, renders a Devanagari table with metrics, and enforces health checks, feature flags, reversibility, and CI gates (coverage ≥85% / ≥70%, a11y, perf, security, SBOM, docs).
+
 ## 🎯 Objectives
 
 1. **Twitter/X Primary Ingestion** - Add Twitter as a primary data source alongside Facebook
@@ -11,6 +15,7 @@ Phase 2 introduces **Advanced Review & Moderation** capabilities and a **Twitter
 3. **CI/CD Automation** - Coverage gates, dependency management, integration tests
 4. **Observability** - Prometheus metrics, error dashboards, structured logging enhancements
 5. **Documentation** - Architecture diagrams, API docs, setup guides
+6. **Analytics & Intelligent Datasets** - Deduplication, Dhruv-style parsing, smart datasets, bias monitoring, Genkit chatbot
 
 ## ✅ Completed Tasks (5 of 16)
 
@@ -198,6 +203,15 @@ X_INGEST_LIMIT=10       # Posts per ingestion
 ### A. Advanced Review & Moderation (4 tasks)
 - [ ] **REV-003:** Edit-in-Review Workflow
 - [ ] **REV-004:** Audit Trail for Review Actions
+
+### C. Analytics & Intelligent Datasets (7 tasks)
+- [ ] **ANA-001:** Cross-platform dedup guardrails (pytest specs + unique index)
+- [ ] **ANA-002:** Parser snapshot persistence & backfill command
+- [ ] **ANA-003:** Leader insights dataset + bias monitor
+- [ ] **ANA-004:** Smart dataset builder + registry metadata
+- [ ] **ANA-005:** Google Genkit RAG pipeline + chatbot endpoint
+- [ ] **ANA-006:** Analytics hub UI with Dhruv-style tables & chatbot widget
+- [ ] **ANA-007:** Bias mitigation surfacing + CI gate enforcement
 - [ ] **REV-005:** Bulk Review Actions
 - [ ] **REV-006:** Auto-Flagging Rules Engine
 
