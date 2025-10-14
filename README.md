@@ -200,15 +200,133 @@ cd backend
 pytest -v                    # Run with verbose output
 pytest -k test_auth          # Run specific test module
 pytest --maxfail=1           # Stop after first failure
+
+# Run specific test suites
+pytest tests/test_checkpoint.py -v      # Checkpoint tests
+pytest tests/test_http_retry_client.py -v  # Retry client tests
+pytest tests/test_embed_token.py -v     # Embed token tests
+```
+
+**E2E Smoke Tests:**
+```bash
+# Test embed token flow (requires running backend)
+./scripts/e2e_embed_smoke.sh
+
+# With custom configuration
+API_BASE_URL=http://localhost:5000 \
+ADMIN_API_KEY=your-api-key \
+./scripts/e2e_embed_smoke.sh
 ```
 
 ### Test Coverage
 
-- Backend: 85%+ line coverage target
+- Backend: 85%+ line coverage target (110+ tests)
 - Frontend: Component and hook testing with Vitest
-- E2E: Playwright tests (in progress)
+- E2E: Embed token smoke tests + Playwright tests (in progress)
+
+## 🔒 Production Hardening
+
+Project Amber includes production-ready features for reliable ingestion and secure embedding:
+
+### Twitter/X Ingestion Hardening
+
+**Retry Logic with Exponential Backoff:**
+- Base delay: 500ms, exponential factor: 2.0, max delay: 60s
+- Full jitter to prevent thundering herd
+- Honors `Retry-After` header for rate limits
+- Max 6 retries for transient errors
+
+**Resumable Ingestion:**
+- Checkpoint-based cursor persistence
+- Resume from last position after interruption
+- Idempotent writes with deduplication by tweet ID
+
+**Dry-Run Mode:**
+```bash
+# Test ingestion without persisting
+INGESTION_DRY_RUN=true python backend/app.py
+```
+
+### Secure Dashboard Embedding
+
+**Short-Lived Signed Tokens:**
+```bash
+# Generate embed token (60s TTL)
+curl -X POST http://localhost:5000/api/embed/token \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"dashboardId": "abc123", "allowedOrigins": ["https://trusted.com"]}'
+```
+
+**Features:**
+- HMAC-signed tokens with HS256
+- Default 60-second TTL (configurable)
+- Origin validation
+- Rate limiting (10 requests/minute per API key)
+- Secure headers (CSP frame-ancestors)
+
+### Observability
+
+**Health Endpoint:**
+```bash
+curl http://localhost:5000/api/health
+# Returns: status, database connectivity, stats, uptime
+```
+
+**Prometheus Metrics:**
+```bash
+# JSON format
+curl http://localhost:5000/api/metrics
+
+# Prometheus text format
+curl -H "Accept: text/plain" http://localhost:5000/api/metrics
+```
+
+**Tracked Metrics:**
+- `ingestion_processed` - Total posts processed
+- `ingestion_failed` - Ingestion failures
+- `ingestion_rate_limited` - Rate limit hits
+- `embed_token_requested` - Token requests
+- `embed_token_failed` - Token failures
+
+### Required Environment Variables
+
+```bash
+# Production secrets (REQUIRED)
+ADMIN_JWT_SECRET=your-strong-secret-key
+EMBED_SIGNING_KEY=your-embed-key-min-32-chars  # Generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+ADMIN_API_KEY=your-admin-api-key
+TWITTER_BEARER_TOKEN=your-twitter-token
+
+# Feature flags
+EMBED_ENABLED=true
+X_INGEST_ENABLED=true
+INGESTION_DRY_RUN=false
+
+# Embedding configuration
+EMBED_ALLOWED_ORIGINS=https://example.com,https://trusted.com
+EMBED_TOKEN_TTL=60
+EMBED_RATE_LIMIT_REQUESTS=10
+
+# Checkpoint storage
+CHECKPOINT_DIR=./checkpoints
+```
+
+See `.env.example` for complete configuration.
 
 ## 🚢 Deployment
+
+### Local Development
+
+```bash
+# Start backend
+cd backend
+python app.py
+
+# Start frontend (separate terminal)
+cd nextjs-app
+npm run dev
+```
 
 ### Production Build
 
@@ -221,17 +339,55 @@ cd backend
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
 
+### Kubernetes Deployment
+
+**Prerequisites:**
+- Kubernetes cluster (1.19+)
+- kubectl configured
+- Container registry access
+
+**Quick Deploy:**
+```bash
+# 1. Build and push image
+docker build -t your-registry/amber-backend:latest backend/
+docker push your-registry/amber-backend:latest
+
+# 2. Create secrets
+kubectl create secret generic amber-secrets \
+  --from-literal=DATABASE_URL="postgresql://..." \
+  --from-literal=ADMIN_JWT_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" \
+  --from-literal=EMBED_SIGNING_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" \
+  --from-literal=TWITTER_BEARER_TOKEN="your-token" \
+  -n amber
+
+# 3. Deploy
+kubectl apply -f k8s/deployment.yaml
+
+# 4. Check status
+kubectl get pods -n amber
+kubectl get svc -n amber
+```
+
+See [k8s/README.md](k8s/README.md) for detailed deployment guide including:
+- AWS Secrets Manager integration
+- Monitoring and alerting
+- Scaling configuration
+- Troubleshooting guide
+
 ### Environment Variables (Production)
 
 ```bash
 # Required
 DATABASE_URL=postgresql://user:pass@host:5432/amber
-FACEBOOK_GRAPH_TOKEN=production_token
-ADMIN_JWT_SECRET=production_secret
+ADMIN_JWT_SECRET=production_secret_32_chars_min
+EMBED_SIGNING_KEY=production_embed_key_32_chars
+TWITTER_BEARER_TOKEN=production_token
 
 # Optional
 FACEBOOK_GRAPH_ENABLED=1
-FACEBOOK_GRAPH_LIMIT=10
+FACEBOOK_GRAPH_TOKEN=production_fb_token
+EMBED_ENABLED=true
+X_INGEST_ENABLED=true
 ```
 
 ### CI/CD Pipeline
@@ -239,11 +395,39 @@ FACEBOOK_GRAPH_LIMIT=10
 The project uses GitHub Actions for continuous integration:
 
 - **Frontend Job**: Lint, type-check, and build Next.js app
-- **Backend Job**: Python tests with pytest and coverage reporting
+- **Backend Job**: Python tests with pytest (110+ tests) and coverage reporting
 - **Security Job**: Trivy vulnerability scanning and Gitleaks secret detection
 - **E2E Job**: Placeholder for Playwright end-to-end tests
 
 All checks must pass before merging to main.
+
+### Secrets Management
+
+**For AWS:**
+- Use AWS Secrets Manager or SSM Parameter Store
+- Install External Secrets Operator for K8s integration
+
+**For Google Cloud:**
+- Use GCP Secret Manager
+- Configure workload identity
+
+**For Azure:**
+- Use Azure Key Vault
+- Configure managed identity
+
+See config loader in `backend/config.py` for hooks.
+
+### Rollback Plan
+
+Zero-downtime rollback:
+```bash
+# Disable features via ConfigMap
+kubectl patch configmap amber-config -n amber \
+  -p '{"data":{"EMBED_ENABLED":"false","X_INGEST_ENABLED":"false"}}'
+
+# Restart pods
+kubectl rollout restart deployment amber-backend -n amber
+```
 
 ## 📚 Documentation
 

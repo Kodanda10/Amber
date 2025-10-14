@@ -21,5 +21,8 @@ def test_health():
     data = resp.get_json()
     assert data["status"] == "ok"
     assert "timestamp" in data
-    assert "stats" in data and "leaders" in data["stats"]
+    # Updated to check new response format with checks
+    assert "checks" in data
+    assert "stats" in data["checks"]
+    assert "leaders" in data["checks"]["stats"]
     assert "build" in data and "version" in data["build"]
