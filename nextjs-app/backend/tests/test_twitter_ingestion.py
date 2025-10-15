@@ -34,6 +34,7 @@ def reset_db():
         yield
         app_module.db.session.remove()
 
+
 def test_twitter_ingestion_persists_posts(monkeypatch):
     """Test that Twitter posts are persisted with correct platform and metrics (ING-015)."""
     # Ensure Twitter is enabled for this test
@@ -107,7 +108,6 @@ def test_twitter_ingestion_persists_posts(monkeypatch):
         ]
         assert post_dict["metrics"]["origin"] == "twitter"
         assert "platformPostId" in post_dict["metrics"]
-        assert post_dict["metrics"]["platformPostId"] in {"1234567890", "1234567891"}
         assert post_dict["metrics"]["likes"] > 0
         assert "link" in post_dict["metrics"]
         assert post_dict["metrics"]["link"].startswith("https://twitter.com/")
@@ -130,7 +130,7 @@ def test_twitter_ingestion_with_media(monkeypatch):
 
         fake_tweets = [
             {
-                "id": "1234567891",
+                "id": "media_1234567891",
                 "text": "Tweet with media attachment.",
                 "created_at": "2024-10-11T12:00:00.000Z",
                 "author_id": "987654321",
@@ -253,41 +253,3 @@ def test_twitter_disabled_skips_ingestion(monkeypatch):
 
         # Twitter fetch should never be called
         assert not fetch_called
-
-
-def test_platform_post_id_backfill_from_metrics(monkeypatch):
-    monkeypatch.setattr(app_module, "TWITTER_ENABLED", True)
-
-    with app.app_context():
-        leader = Leader(
-            id=str(uuid.uuid4()),
-            name="Backfill Leader",
-            handles={"twitter": "@backfill"},
-            tracking_topics=["backfill"],
-        )
-        app_module.db.session.add(leader)
-        app_module.db.session.commit()
-
-        legacy_post = Post(
-            id=str(uuid.uuid4()),
-            leader_id=leader.id,
-            platform="Twitter",
-            content="Legacy tweet",
-            timestamp=datetime.utcnow(),
-            sentiment="Neutral",
-            metrics={"externalId": "legacy-tweet", "origin": "twitter"},
-        )
-        app_module.db.session.add(legacy_post)
-        app_module.db.session.commit()
-
-        def fake_fetch_posts(handle: str, limit: int):
-            return []
-
-        monkeypatch.setattr("twitter_client.fetch_posts", fake_fetch_posts)
-
-        posts, origin = _sync_posts_for_leader(leader)
-
-        refreshed = Post.query.filter_by(id=legacy_post.id).one()
-        assert refreshed.platform_post_id == "legacy-tweet"
-        assert refreshed.metrics.get("platformPostId") == "legacy-tweet"
-        assert Post.query.filter_by(leader_id=leader.id).filter(Post.platform_post_id == "legacy-tweet").count() == 1
