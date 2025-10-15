@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 import uuid
 
+import pytest
+
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("TWITTER_ENABLED", "1")
@@ -20,6 +22,17 @@ app = app_module.app
 Leader = app_module.Leader
 Post = app_module.Post
 _sync_posts_for_leader = app_module._sync_posts_for_leader
+
+
+@pytest.fixture(autouse=True)
+def reset_db():
+    with app.app_context():
+        app_module.db.drop_all()
+        app_module.db.create_all()
+        if hasattr(app_module, "ensure_post_schema"):
+            app_module.ensure_post_schema()
+        yield
+        app_module.db.session.remove()
 
 
 def test_twitter_ingestion_persists_posts(monkeypatch):
@@ -117,7 +130,7 @@ def test_twitter_ingestion_with_media(monkeypatch):
 
         fake_tweets = [
             {
-                "id": "1234567891",
+                "id": "media_1234567891",
                 "text": "Tweet with media attachment.",
                 "created_at": "2024-10-11T12:00:00.000Z",
                 "author_id": "987654321",

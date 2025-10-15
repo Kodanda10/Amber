@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import uuid
 
+import pytest
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("FACEBOOK_GRAPH_ENABLED", "1")
@@ -19,6 +20,18 @@ app = app_module.app
 Leader = app_module.Leader
 Post = app_module.Post
 _sync_posts_for_leader = app_module._sync_posts_for_leader
+
+
+@pytest.fixture(autouse=True)
+def reset_db():
+    with app.app_context():
+        app_module.db.drop_all()
+        app_module.db.create_all()
+        if hasattr(app_module, "ensure_post_schema"):
+            app_module.ensure_post_schema()
+        yield
+        app_module.db.session.remove()
+
 
 def test_graph_ingestion_persists_avatar_and_media(monkeypatch):
     with app.app_context():
@@ -57,6 +70,7 @@ def test_graph_ingestion_persists_avatar_and_media(monkeypatch):
         monkeypatch.setattr(app_module, "FACEBOOK_GRAPH_LIMIT", 5)
 
         posts, origin = _sync_posts_for_leader(leader)
+        app_module.db.session.expire_all()
 
         assert origin == "graph"
         assert len(posts) == 1

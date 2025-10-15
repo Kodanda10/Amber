@@ -31,6 +31,8 @@ def reset_db():
     with app.app_context():
         app_module.db.drop_all()
         app_module.db.create_all()
+        if hasattr(app_module, "ensure_post_schema"):
+            app_module.ensure_post_schema()
         yield
         app_module.db.session.remove()
 
