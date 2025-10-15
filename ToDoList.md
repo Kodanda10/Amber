@@ -26,15 +26,15 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | Phase | Goal | Start | End (Target) | Summary |
 |-------|------|-------|--------------|---------|
 | P0 | Stabilization & Non-destructive ingestion | DONE | DONE | Hash/revision, pagination, review flow |
-| P1 | Observability & Quality Foundation | Active | TBD | Logging, metrics, sentiment scoring, TDD reinforcement |
-| P2 | Localization & UX Polish (Hindi + Language Indicators) | Pending |  | Date formatting, badges |
-| P3 | Social Media API Integration (Meta / Facebook) | Pending |  | Real API ingestion replacing placeholders |
-| P4 | Advanced Review & Moderation + Auth | Pending |  | Role-based workflow, audit trail |
-| P5 | Analytics Layer & Derived Metrics | Pending |  | Trends, leader performance, time-series model |
-| P6 | Security & Hardening | Pending |  | AuthN/Z, rate limiting, secret rotation |
-| P7 | Performance & Scaling | Pending |  | Caching, async ingestion, queue workers |
-| P8 | ML / NLP Enhancements | Pending |  | NER, stance detection, translation pipeline |
-| Continuous | CI/CD Maturity | Active | Ongoing | Coverage gates, SAST, E2E, release tagging |
+| P1 | Observability & Quality Foundation | ACTIVE | TBD | Logging, metrics, sentiment scoring, TDD reinforcement |
+| P2 | Analytics & Intelligent Datasets (Phase 2) | PLANNING | 2025-11-15 | Multi-leader analytics, bias mitigation, Genkit chatbot |
+| P3 | Localization & UX Polish (Hindi + Language Indicators) | DONE | 2025-10-07 | Date formatting, badges, Hindi surfaces |
+| P4 | Social Media API Integration (Meta / Facebook) | DONE | 2025-10-06 | Feature-flagged Graph ingestion, media/avatar persistence |
+| P5 | Advanced Review & Moderation + Auth | PENDING |  | Role-based workflow, audit trail |
+| P6 | Security & Hardening | PENDING |  | AuthN/Z, rate limiting, secret rotation |
+| P7 | Performance & Scaling | PENDING |  | Caching, async ingestion, queue workers |
+| P8 | ML / NLP Enhancements | PENDING |  | NER, stance detection, translation pipeline |
+| Continuous | CI/CD Maturity | ACTIVE | Ongoing | Coverage gates, SAST, E2E, release tagging |
 
 ---
 ## 2. TASK INDEX (Grouped by Domain)
@@ -92,12 +92,18 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | SEC-003 | Rate Limiting | Per-IP limit on refresh endpoints | Exceed limit returns 429 | rate limit test | P2 | TODO | |
 | SEC-004 | Secrets Scan (CI) | Already added (Gitleaks) | CI artifact shows run | present in workflow | P1 | DONE | Non-blocking for now |
 
-### 2.7 Analytics & Derived Metrics
-| ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
-|----|-------|-------------|---------------------|-------|----------|--------|-------|
-| ANA-001 | Sentiment Trend Rollups | Daily aggregated sentiment per leader | /api/analytics/sentiment returns day buckets | analytics test | P2 | TODO | |
-| ANA-002 | Post Velocity Metric | Posts per leader per 7d rolling window | metric present & correct | velocity test | P2 | TODO | |
-| ANA-003 | Revision Change Count | Count content revisions per leader | endpoint exposes revisions count | revision metric test | P2 | TODO | |
+### 2.7 Analytics & Intelligent Datasets (Phase 2)
+> Mirrors the Project Dhruv reference: a TDD-first Next.js dashboard parsing OP Choudhary’s Sept 1–6 2025 X posts into when/where/what/which/how, rendering Devanagari tables with Noto Sans and enforcing CI gates (coverage ≥85%/≥70%, a11y, perf, security, SBOM, docs). Each ANA task must follow the same red→green→refactor discipline with commit/push+green CI before proceeding.
+
+| ID | Title | Description | Acceptance Criteria | Tests (write failing first) | Priority | Status | Notes |
+|----|-------|-------------|---------------------|-----------------------------|----------|--------|-------|
+| ANA-001 | Cross-platform Dedup Guard | Enforce unique posts across all sources | Unique constraint + ingestion skip with metrics | `tests/test_x_ingestion.py::test_duplicate_external_id_rejected`, `tests/test_facebook_ingestion.py::test_duplicate_platform_post_id_ignored` | P0 | TODO | Feature gate: `SMART_DATASET_ENABLED` |
+| ANA-002 | Parser Snapshot Persistence | Store Dhruv-style parsed summary per post | `Post.metrics.parsed` populated + backfill idempotent | `tests/test_post_parser.py::test_hindi_date_and_entities`, `tests/test_backfill_parsed_posts.py::test_idempotent_backfill` | P0 | TODO | Parser module under `backend/parsers/` |
+| ANA-003 | Leader Insights Dataset | Nightly rollups + bias indicators | `/api/analytics/leader/<id>` returns insights & bias flags | `tests/test_leader_insights.py::test_metrics_rollup`, `tests/test_bias_monitor.py::test_skew_alert_triggered` | P0 | TODO | Requires scheduler hook |
+| ANA-004 | Smart Dataset Builder | Export per-leader + unified datasets with registry | Dataset files written + metadata recorded | `tests/test_dataset_builder.py::test_generates_per_leader_files`, `tests/test_dataset_registry.py::test_metadata_recorded` | P1 | TODO | Output stored in `analytics/datasets/` |
+| ANA-005 | Genkit RAG Pipeline | Google Genkit embeddings + chatbot API | Genkit flow produces answers w/ citations | `genkit/tests/pipeline.test.ts::test_embedding_job_runs`, `tests/test_chatbot_route.py::test_response_contains_sources` | P1 | TODO | Feature flag: `CHATBOT_ENABLED` |
+| ANA-006 | Analytics Hub UI | Dhruv-style tables + filters + chatbot widget | Page renders per-leader/all views & interacts with chatbot | `src/tests/analytics-page.test.tsx::renders_filtered_leader_table`, `src/tests/chatbot-widget.test.tsx::submits_query_and_streams_answer` | P1 | TODO | Next.js route `/analytics` |
+| ANA-007 | Bias Mitigation & CI Gate | Bias metrics surfaced + enforced in CI | `/api/metrics` exposes bias summary + CI job fails on breach | `tests/test_bias_ci_gate.py::test_pipeline_fails_on_threshold`, `src/tests/analytics-page.test.tsx::shows_bias_banner` | P1 | TODO | Bias threshold configured via env |
 
 ### 2.8 Performance & Scaling
 | ID | Title | Description | Acceptance Criteria | Tests | Priority | Status | Notes |
@@ -124,17 +130,17 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 
 ---
 ## 3. CURRENT SNAPSHOT
-- Phase Active: P1 (Observability & Quality)
-- Highest Priority Upcoming: SEC-002, CI-002, FE-CORE-002
-- Test Coverage: Vitest covers PostCard Graph metadata; pytest covers admin token flow + error logging shape.
-- Logging: Structured request + ingest success + global error handler emitting JSON payloads.
+- Phase Active: P1 (Observability & Quality) with Phase 2 (Analytics & Intelligent Datasets) in planning kickoff.
+- Highest Priority Upcoming: ANA-001 (dedup guard), ANA-002 (parser snapshot), SEC-002 (role guard).
+- Test Coverage: Backend ≥85% (pytest), frontend Vitest suite green; new ANA specs to be authored before implementation.
+- Logging: Structured request + ingest success + global error handler emitting JSON payloads; ANA-001 will add dedup counters.
 
 ---
 ## 4. NEXT ACTION QUEUE (Short Horizon)
-1. SEC-002 (Role-based access guardrails on review actions).
-2. CI-002 (Add backend coverage gate once new suites stabilize).
-3. FE-CORE-002 (Harden infinite scroll with observer test coverage).
-4. OBS-005 (Codify coverage thresholds in reporting pipeline).
+1. ANA-001 (Implement dedup unique index + ingestion guards, TDD with failing pytest cases).
+2. ANA-002 (Author parser module + tests, backfill command).
+3. SEC-002 (Role-based access guardrails on review actions).
+4. CI-002 (Backend coverage gate enforcement).
 
 ---
 ## 5. CHANGE LOG (Manual Updates)
@@ -151,6 +157,7 @@ Priority = P0 (critical), P1 (high), P2 (normal), P3 (nice-to-have)
 | 2025-10-05 | Added admin JWT skeleton and ping endpoint | SEC-001 | codex | Unauthorized/authorized tests in suite |
 | 2025-10-06 | Feature-flagged Graph ingest + expanded leader roster | ING-006, ING-009 | codex | pytest (tests/test_facebook_ingestion.py, tests/test_leader_seed.py) + vitest (src/tests/dashboard.test.tsx) |
 | 2025-10-07 | Frontend consumes Graph media/avatar; admin token issuance endpoint; structured error handler | ING-006, SEC-001, OBS-003 | codex | Vitest (`src/components/PostCard.test.tsx`), pytest (`tests/test_auth.py`, `tests/test_observability_and_ingest.py`) |
+| 2025-10-13 | Phase 2 analytics & Genkit roadmap documented | ANA-001…ANA-007 | codex | Updated PRD, ToDoList, GEMINI, AGENTS for Phase 2 plan |
 
 ---
 ## 6. MAINTENANCE RULES
