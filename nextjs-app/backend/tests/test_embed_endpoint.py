@@ -24,6 +24,20 @@ if str(BACKEND_DIR) not in sys.path:
 app_module = importlib.import_module("app")
 app = app_module.app
 
+# Ensure embed service is initialized even if app was imported earlier in the test run.
+if os.environ.get("EMBED_ENABLED", "").lower() in {"1", "true", "yes", "on"}:
+    if getattr(app_module, "_embed_service", None) is None and getattr(app_module, "EmbedTokenService", None):
+        try:
+            app_module._embed_service = app_module.EmbedTokenService()
+            app_module._embed_rate_limiter = app_module.RateLimiter(
+                max_requests=int(os.getenv("EMBED_RATE_LIMIT_REQUESTS", "10")),
+                window_seconds=int(os.getenv("EMBED_RATE_LIMIT_WINDOW", "60")),
+            )
+            app_module.ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
+            app_module.EMBED_ENABLED = True
+        except Exception:
+            app_module.EMBED_ENABLED = False
+
 with app.app_context():
     app_module.init_db()
 
