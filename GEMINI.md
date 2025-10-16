@@ -36,3 +36,9 @@ This log tracks all development activities performed by the Gemini agent, follow
 *   **Dhruv reference codified:** Noted that Phase 2 mirrors Project Dhruv’s TDD Hindi parsing dashboard (48-post dataset, regex extraction, Devanagari UI, health checks, feature flags, CI gates).
 *   **Agent playbook refreshed:** Updated `AGENTS.md` with Phase 2 objective, new feature flags (`SMART_DATASET_ENABLED`, `CHATBOT_ENABLED`), and instructions to keep documentation efforts isolated via worktrees.
 *   **Compliance log:** Recorded roadmap alignment in `ToDoList.md` change log and noted follow-up actions for Genkit setup and ANA-specific test scaffolding.
+
+## Development Actions (October 16, 2025)
+
+*   **Platform post normalization hardening:** Added `ensure_post_schema()` migrations plus ingestion updates so Facebook/Twitter/X writes persist `platformPostId` consistently; revised merge order to preserve latest metrics.
+*   **Expanded backend TDD coverage:** New pytest suites (`tests/test_platform_post_schema.py`, `tests/test_external_clients.py`) cover schema backfill, Graph/Twitter revisions, and social client adapters, lifting backend coverage to 88%.
+*   **Regression-proofed ingestion dedup:** Facebook/Twitter tests now assert revision increments and metric refresh for duplicate posts, guarding ANA-001 scenarios with deterministic fixtures.

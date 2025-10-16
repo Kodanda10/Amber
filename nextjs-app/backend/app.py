@@ -524,7 +524,7 @@ def _upsert_graph_posts(
             post.platform = "Facebook"
             existing_metrics = post.metrics or {}
             first_seen = existing_metrics.get("firstSeenAt") or existing_metrics.get("first_seen_at")
-            merged = {**metrics_base, **existing_metrics}
+            merged = {**existing_metrics, **metrics_base}
             if not first_seen:
                 first_seen = post.created_at.isoformat() if post.created_at else now.isoformat()
             merged["firstSeenAt"] = first_seen
@@ -642,7 +642,7 @@ def _upsert_twitter_posts(
             post.platform = "Twitter"
             existing_metrics = post.metrics or {}
             first_seen = existing_metrics.get("firstSeenAt") or existing_metrics.get("first_seen_at")
-            merged = {**metrics_base, **existing_metrics}
+            merged = {**existing_metrics, **metrics_base}
             if not first_seen:
                 first_seen = post.created_at.isoformat() if post.created_at else now.isoformat()
             merged["firstSeenAt"] = first_seen

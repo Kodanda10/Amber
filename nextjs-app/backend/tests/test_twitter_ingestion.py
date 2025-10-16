@@ -240,3 +240,72 @@ def test_twitter_disabled_skips_ingestion(monkeypatch):
 
         # Twitter fetch should never be called
         assert not fetch_called
+        assert origin in {"disabled", "sample", "news", "scraper"}
+        assert Post.query.count() == len(posts)
+
+
+def test_twitter_ingestion_updates_existing_post(monkeypatch):
+    """Ensure Twitter ingestion deduplicates and updates existing posts."""
+    monkeypatch.setattr(app_module, "TWITTER_ENABLED", True)
+
+    with app.app_context():
+        leader = Leader(
+            id=str(uuid.uuid4()),
+            name="Revision Leader",
+            handles={"twitter": "@revleader"},
+            tracking_topics=[],
+        )
+        app_module.db.session.add(leader)
+        app_module.db.session.commit()
+        leader_id = leader.id
+
+    base_tweet = {
+        "id": "rev_tweet",
+        "text": "Original tweet",
+        "created_at": "2024-10-03T09:00:00.000Z",
+        "author_id": "987654321",
+        "public_metrics": {
+            "like_count": 10,
+            "retweet_count": 2,
+            "reply_count": 1,
+        },
+        "author": {
+            "id": "987654321",
+            "name": "Revision Leader",
+            "username": "revleader",
+            "profile_image_url": "https://pbs.twimg.com/profile_images/rev.jpg",
+        },
+    }
+    revised_tweet = dict(base_tweet)
+    revised_tweet["text"] = "Updated tweet content"
+    revised_tweet["public_metrics"] = {
+        "like_count": 42,
+        "retweet_count": 7,
+        "reply_count": 3,
+    }
+    revised_tweet["created_at"] = "2024-10-04T10:30:00.000Z"
+
+    call_counter = {"value": 0}
+
+    def fake_fetch_posts(handle: str, limit: int):
+        call_counter["value"] += 1
+        return [base_tweet] if call_counter["value"] == 1 else [revised_tweet]
+
+    monkeypatch.setattr("twitter_client.fetch_posts", fake_fetch_posts)
+
+    with app.app_context():
+        leader = Leader.query.get(leader_id)
+        assert leader is not None
+        first_posts, origin = _sync_posts_for_leader(leader)
+        assert origin == "twitter"
+        assert first_posts[0]["metrics"]["platformPostId"] == "rev_tweet"
+
+        second_posts, origin = _sync_posts_for_leader(leader)
+        assert origin == "twitter"
+        assert len(second_posts) == 1
+        refreshed = Post.query.filter_by(id=second_posts[0]["id"]).one()
+        assert refreshed.metrics["revision"] == 2
+        assert refreshed.platform_post_id == "rev_tweet"
+        assert refreshed.metrics["platformPostId"] == "rev_tweet"
+        assert refreshed.metrics["externalId"] == "rev_tweet"
+        assert refreshed.metrics["likes"] == 42
