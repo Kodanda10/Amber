@@ -30,9 +30,8 @@ This log tracks all development activities performed by the Gemini agent, follow
 *   **Structured error logging:** Centralized exception handler emits JSON error envelopes and logs with request correlation; verified via `tests/test_observability_and_ingest.py::test_error_log_shape_on_exception`.
 *   **Removed legacy Vite stack:** Deleted `archive/vite-app/` so the repository solely reflects the Next.js implementation.
 
-## Upcoming Focus — Zoho Creator
+## Development Actions (October 16, 2025)
 
-*   **Bootstrap Zoho Creator app:** Use `tools/zoho_creator/bootstrap_creator.py` (dry-run first) to ensure the Amber experimental Creator app exists, forms are upserted from `blueprints/`, and the dashboard page renders.
-*   **Secrets & environment:** Populate `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`, `ZOHO_OWNER`, `ZOHO_APP_NAME`, `ZOHO_APP_LINK_NAME`, and `ZOHO_DC` locally or in GitHub Actions before invoking the bootstrap script or `.github/workflows/zoho-bootstrap.yml`.
-*   **Scope guardrails:** Keep Creator provisioning idempotent; no changes to Next.js stack during Zoho app work, and follow existing CI/security gates (ASVS 5.0 alignment, secrets scanning).
-*   **Follow-up:** Plan subsequent Zoho iterations (filters, charts) after verifying the base app URL prints from the bootstrap output.
+*   **Platform post normalization hardening:** Added `ensure_post_schema()` migrations plus ingestion updates so Facebook/Twitter/X writes persist `platformPostId` consistently; revised merge order to preserve latest metrics.
+*   **Expanded backend TDD coverage:** New pytest suites (`tests/test_platform_post_schema.py`, `tests/test_external_clients.py`) cover schema backfill, Graph/Twitter revisions, and social client adapters, lifting backend coverage to 88%.
+*   **Regression-proofed ingestion dedup:** Facebook/Twitter tests now assert revision increments and metric refresh for duplicate posts, guarding ANA-001 scenarios with deterministic fixtures.

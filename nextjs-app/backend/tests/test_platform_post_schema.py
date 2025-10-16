@@ -17,6 +17,7 @@ ingest_x_posts = app_module.ingest_x_posts
 
 @pytest.fixture(autouse=True)
 def reset_db():
+    """Ensure a fresh in-memory database for each test."""
     with app.app_context():
         app_module.db.drop_all()
         app_module.db.create_all()

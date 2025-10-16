@@ -149,3 +149,50 @@ def test_graph_ingestion_falls_back_to_news_on_error(monkeypatch):
         stored = posts[0]
         assert stored["platform"] == "News"
         assert stored["metrics"].get("origin") == "news"
+
+
+def test_graph_ingestion_updates_existing_platform_post(monkeypatch):
+    with app.app_context():
+        leader = Leader(
+            id=str(uuid.uuid4()),
+            name="Graph Revision Leader",
+            handles={"facebook": "@revisions"},
+            tracking_topics=[],
+        )
+        app_module.db.session.add(leader)
+        app_module.db.session.commit()
+
+        base_record = {
+            "id": "rev_1",
+            "message": "Original message",
+            "created_time": "2025-10-01T10:00:00Z",
+            "permalink_url": "https://facebook.com/posts/rev_1",
+            "from": {"picture": {"data": {"url": "https://images.example.com/original.jpg"}}},
+        }
+        updated_record = dict(base_record)
+        updated_record["message"] = "Updated content"
+        updated_record["created_time"] = "2025-10-02T15:45:00Z"
+
+        call_count = {"value": 0}
+
+        def fake_fetch_posts(handle: str, limit: int):
+            call_count["value"] += 1
+            return [base_record] if call_count["value"] == 1 else [updated_record]
+
+        monkeypatch.setattr(app_module.facebook_client, "fetch_posts", fake_fetch_posts)
+        monkeypatch.setattr(app_module, "FACEBOOK_GRAPH_ENABLED", True)
+        monkeypatch.setattr(app_module, "FACEBOOK_GRAPH_LIMIT", 5)
+
+        first_posts, origin = _sync_posts_for_leader(leader)
+        assert origin == "graph"
+        assert first_posts[0]["metrics"]["platformPostId"] == "rev_1"
+
+        second_posts, origin = _sync_posts_for_leader(leader)
+        assert origin == "graph"
+        assert len(second_posts) == 1
+        refreshed = Post.query.filter_by(id=second_posts[0]["id"]).one()
+        assert refreshed.metrics["revision"] == 2
+        assert refreshed.platform_post_id == "rev_1"
+        assert refreshed.metrics["platformPostId"] == "rev_1"
+        assert refreshed.metrics["externalId"] == "rev_1"
+        assert refreshed.metrics["lastSeenAt"] >= refreshed.metrics["firstSeenAt"]
