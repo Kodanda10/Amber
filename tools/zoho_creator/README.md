@@ -36,3 +36,33 @@ python3 tools/zoho_creator/bootstrap_creator.py
 - Upserts Leaders and Posts forms from blueprints
 - Upserts a minimal Dashboard page
 - Idempotent; safe to re-run
+
+## Verification
+
+After provisioning, verify the app was created successfully:
+
+```bash
+export ZOHO_CLIENT_ID=...
+export ZOHO_CLIENT_SECRET=...
+export ZOHO_REFRESH_TOKEN=...
+export ZOHO_OWNER=you@example.com
+python3 tools/zoho_creator/verify_creator.py
+```
+
+The verification script checks:
+- App exists
+- Leaders form exists
+- Posts form exists
+- Dashboard page exists
+
+Exit codes:
+- 0: All components verified successfully
+- 1: One or more components missing or verification failed
+
+## Testing
+
+Run the test suite:
+
+```bash
+pytest tools/zoho_creator/test_bootstrap.py -v
+```

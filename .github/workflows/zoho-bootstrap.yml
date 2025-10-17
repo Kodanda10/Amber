@@ -40,3 +40,14 @@ jobs:
           DRY=""
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then DRY="--dry-run"; fi
           python3 tools/zoho_creator/bootstrap_creator.py $DRY
+
+      - name: Verify Creator app provisioning
+        if: github.event.inputs.dry_run == 'false'
+        env:
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+          ZOHO_OWNER: ${{ secrets.ZOHO_OWNER }}
+          ZOHO_APP_LINK_NAME: ${{ secrets.ZOHO_APP_LINK_NAME }}
+          ZOHO_DC: ${{ secrets.ZOHO_DC }}
+        run: python3 tools/zoho_creator/verify_creator.py
