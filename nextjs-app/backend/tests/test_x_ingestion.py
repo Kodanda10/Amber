@@ -31,6 +31,8 @@ def reset_db():
     with app.app_context():
         app_module.db.drop_all()
         app_module.db.create_all()
+        if hasattr(app_module, "ensure_post_schema"):
+            app_module.ensure_post_schema()
         yield
         app_module.db.session.remove()
 
@@ -82,6 +84,8 @@ def test_ingest_x_posts_creates_records():
         assert db_post is not None
         assert db_post.content == "Test tweet from X"
         assert db_post.platform == "X"
+        assert db_post.platform_post_id == "x_tweet_123"
+        assert db_post.metrics.get("platformPostId") == "x_tweet_123"
 
 
 def test_deduplication_by_external_id():
@@ -104,7 +108,8 @@ def test_deduplication_by_external_id():
             content="Old tweet content",
             timestamp=app_module.datetime.utcnow(),
             sentiment="Neutral",
-            metrics={"externalId": "x_tweet_123", "origin": "x"}
+            metrics={"externalId": "x_tweet_123", "platformPostId": "x_tweet_123", "origin": "x"},
+            platform_post_id="x_tweet_123"
         )
         app_module.db.session.add(existing_post)
         app_module.db.session.commit()
@@ -129,13 +134,17 @@ def test_deduplication_by_external_id():
         mock_client.fetch_user_timeline.return_value = mock_x_data
         
         with patch('app.x_client.create_client', return_value=mock_client):
-            posts = app_module.ingest_x_posts(leader.id)
+            app_module.ingest_x_posts(leader.id)
         
         # Should not create duplicate - should return existing post
         all_posts = Post.query.filter_by(leader_id=leader.id).all()
         assert len(all_posts) == 1
         # Content should be unchanged (no update on existing)
         assert all_posts[0].content == "Old tweet content"
+        assert all_posts[0].platform_post_id == "x_tweet_123"
+        assert all_posts[0].metrics.get("platformPostId") == "x_tweet_123"
+        assert all_posts[0].platform_post_id == "x_tweet_123"
+        assert all_posts[0].metrics.get("platformPostId") == "x_tweet_123"
 
 
 def test_origin_field_set_to_x():
@@ -268,3 +277,39 @@ def test_ingest_x_posts_handles_api_errors():
             # Should return empty list, not crash
             assert len(posts) == 0
             assert Post.query.filter_by(leader_id=leader.id).count() == 0
+
+
+def test_platform_post_id_backfill_from_metrics():
+    """Legacy posts backfill platform_post_id and metrics."""
+    with app.app_context():
+        leader = Leader(
+            id="test-leader-5",
+            name="Test Leader",
+            handles={"x": "backfilluser"},
+            tracking_topics=["legacy"],
+        )
+        app_module.db.session.add(leader)
+        app_module.db.session.commit()
+
+        legacy_post = Post(
+            id="legacy-post-1",
+            leader_id=leader.id,
+            platform="X",
+            content="Legacy tweet",
+            timestamp=app_module.datetime.utcnow(),
+            sentiment="Neutral",
+            metrics={"externalId": "legacy001", "origin": "x"},
+        )
+        app_module.db.session.add(legacy_post)
+        app_module.db.session.commit()
+
+        mock_client = Mock()
+        mock_client.fetch_user_timeline.return_value = {"posts": [], "next_token": None, "user_avatar": None}
+
+        with patch("app.x_client.create_client", return_value=mock_client):
+            posts = app_module.ingest_x_posts(leader.id)
+
+        assert posts == []
+        refreshed = Post.query.filter_by(id="legacy-post-1").one()
+        assert refreshed.platform_post_id == "legacy001"
+        assert refreshed.metrics.get("platformPostId") == "legacy001"

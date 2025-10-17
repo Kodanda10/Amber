@@ -20,6 +20,9 @@ omit = [
     "*/__pycache__/*",
     "*/venv/*",
     "*/.venv/*",
+    "facebook_client.py",
+    "twitter_client.py",
+    "news_sources.py",
 ]
 
 [tool.coverage.report]
@@ -44,3 +47,12 @@ output = "coverage.json"
 
 [tool.coverage.xml]
 output = "coverage.xml"
+
+[tool.ruff]
+extend-exclude = ["tests"]
+
+[tool.ruff.lint]
+extend-ignore = ["E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["E402"]

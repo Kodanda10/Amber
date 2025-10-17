@@ -7,8 +7,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Dict, List, Optional
-from datetime import datetime
+from typing import Dict, Optional
 
 import requests
 
