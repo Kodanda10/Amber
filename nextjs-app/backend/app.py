@@ -345,11 +345,9 @@ def _sync_posts_for_leader(leader: Leader) -> Tuple[List[Dict], str]:
         )
 
     if not upserted_posts:
-        # Only generate a sample post if there are no existing posts for the leader.
-        if not existing_posts:
-            sample_post = _ensure_sample_post(leader, existing_posts, avatar_url)
-            upserted_posts = [sample_post]
-            origin = "sample"
+        sample_post = _ensure_sample_post(leader, existing_posts, avatar_url)
+        upserted_posts = [sample_post]
+        origin = "sample"
 
     db.session.commit()
     payload = [post.to_dict() for post in upserted_posts]
@@ -414,7 +412,7 @@ def _upsert_article_posts(
                 post.timestamp = timestamp
             post.content = content
             post.sentiment = sentiment
-            existing_metrics = dict(post.metrics or {})
+            existing_metrics = post.metrics or {}
             first_seen = existing_metrics.get("firstSeenAt") or existing_metrics.get("first_seen_at")
             merged = {**metrics_base, **existing_metrics}
             if not first_seen:
@@ -514,7 +512,7 @@ def _upsert_graph_posts(
             post.platform = "Facebook"
             existing_metrics = dict(post.metrics or {})
             first_seen = existing_metrics.get("firstSeenAt") or existing_metrics.get("first_seen_at")
-            merged = {**metrics_base, **existing_metrics}
+            merged = {**existing_metrics, **metrics_base}
             if not first_seen:
                 first_seen = post.created_at.isoformat() if post.created_at else now.isoformat()
             merged["firstSeenAt"] = first_seen
@@ -635,7 +633,7 @@ def _upsert_twitter_posts(
             post.platform = "Twitter"
             existing_metrics = dict(post.metrics or {})
             first_seen = existing_metrics.get("firstSeenAt") or existing_metrics.get("first_seen_at")
-            merged = {**metrics_base, **existing_metrics}
+            merged = {**existing_metrics, **metrics_base}
             if not first_seen:
                 first_seen = post.created_at.isoformat() if post.created_at else now.isoformat()
             merged["firstSeenAt"] = first_seen
@@ -691,7 +689,7 @@ def _ensure_sample_post(
     avatar_url: Optional[str],
 ) -> Post:
     for post in existing_posts:
-        metrics = dict(post.metrics or {})
+        metrics = post.metrics or {}
         if metrics.get("origin") == "sample":
             return post
 
@@ -767,21 +765,19 @@ def ensure_post_schema() -> None:
     """Ensure posts table has platform_post_id column and unique index; backfill legacy rows."""
     engine = db.engine
     inspector = inspect(engine)
-    if 'posts' not in inspector.get_table_names():
+    if "posts" not in inspector.get_table_names():
         return
 
-    columns = {col['name'] for col in inspector.get_columns('posts')}
-    if 'platform_post_id' not in columns:
+    columns = {col["name"] for col in inspector.get_columns("posts")}
+    if "platform_post_id" not in columns:
         with engine.begin() as conn:
-            conn.execute(text('ALTER TABLE posts ADD COLUMN platform_post_id VARCHAR(255)'))
+            conn.execute(text("ALTER TABLE posts ADD COLUMN platform_post_id VARCHAR(255)"))
 
     inspector = inspect(engine)
-    indexes = {idx['name'] for idx in inspector.get_indexes('posts')}
-    if 'idx_posts_platform_platform_post_id' not in indexes:
+    indexes = {idx["name"] for idx in inspector.get_indexes("posts")}
+    if "idx_posts_platform_platform_post_id" not in indexes:
         with engine.begin() as conn:
-            conn.execute(
-                text('CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_platform_platform_post_id ON posts (platform, platform_post_id)')
-            )
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_platform_platform_post_id ON posts (platform, platform_post_id)"))
 
     session = db.session
     posts = session.query(Post).filter(Post.platform_post_id.is_(None)).all()
@@ -790,12 +786,12 @@ def ensure_post_schema() -> None:
         metrics = dict(post.metrics or {})
         candidate = None
         if isinstance(metrics, dict):
-            candidate = metrics.get('platformPostId') or metrics.get('externalId')
+            candidate = metrics.get("platformPostId") or metrics.get("externalId")
         if candidate:
             post.platform_post_id = candidate
             if isinstance(metrics, dict):
-                metrics['platformPostId'] = candidate
-                metrics.setdefault('externalId', candidate)
+                metrics["platformPostId"] = candidate
+                metrics.setdefault("externalId", candidate)
                 post.metrics = metrics
             updated = True
     if updated:
@@ -840,7 +836,7 @@ def ingest_x_posts(leader_id: str) -> List[Dict]:
                 backfilled_existing = True
         if external_id:
             by_external_id[external_id] = post
-    
+
     try:
         # Create X API client and fetch timeline
         client = x_client.create_client()
@@ -850,21 +846,21 @@ def ingest_x_posts(leader_id: str) -> List[Dict]:
         
         for x_post in result.get("posts", []):
             external_id = x_post["id"]
-
+            
             # Skip if already exists (deduplication)
             if external_id in by_external_id:
                 continue
-
+            
             # Parse timestamp
             timestamp = datetime.fromisoformat(x_post["created_at"].replace("Z", "+00:00"))
-
+            
             # Get first media URL if available
             media_urls = x_post.get("media_urls", [])
             media_url = media_urls[0] if media_urls else None
-
+            
             # Classify sentiment
             sentiment_label = classify_sentiment(x_post["text"])
-
+            
             metrics = {
                 "origin": "x",
                 "externalId": external_id,
@@ -875,7 +871,7 @@ def ingest_x_posts(leader_id: str) -> List[Dict]:
                 "source": "Twitter/X",
                 "language": "en"  # TODO: Add language detection
             }
-
+            
             post = Post(
                 id=str(uuid.uuid4()),
                 leader_id=leader.id,
@@ -886,16 +882,16 @@ def ingest_x_posts(leader_id: str) -> List[Dict]:
                 metrics=metrics,
                 platform_post_id=external_id,
             )
-
+            
             db.session.add(post)
             upserted_posts.append(post)
             by_external_id[external_id] = post
-
+        
         if upserted_posts or backfilled_existing:
             db.session.commit()
-
+        
         return [post.to_dict() for post in upserted_posts]
-
+        
     except Exception as exc:
         app.logger.warning("x_ingest_failed leader=%s error=%s", leader.name, exc)
         return []

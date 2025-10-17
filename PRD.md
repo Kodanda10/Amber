@@ -29,6 +29,7 @@ This section outlines the project's features broken down into granular, atomic t
         *   Raw scraped data is transformed into a consistent internal data model.
         *   Handles missing or malformed data gracefully.
         *   Outputs clean, validated data.
+        *   Persists provider identifiers (e.g., `platformPostId`) into canonical storage columns for deduplication.
     *   **Dependencies:** DA-001, BE-001
     *   **Priority:** High
 *   **Task ID:** DA-003
